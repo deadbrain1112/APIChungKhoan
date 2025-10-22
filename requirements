@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+minio
+python-dotenv
+python-multipart
+pydantic>=2.7,<3
+email-validator>=2.1
+pymongo
+python-jose
+bcrypt
+httpx
+requests
+motor
+payos
