@@ -1,32 +1,28 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from app.configs.database import nhadautu_col  # motor async collection
+from fastapi import APIRouter, Form, HTTPException
+from app.configs.database import nhadautu_col
 
 router = APIRouter(prefix="/auth", tags=["Đăng nhập"])
 
-class LoginRequest(BaseModel):
-    taiKhoan: str
-    matKhau: str
-
 @router.post("/login")
-async def login(req: LoginRequest):
-    try:
-        user = await nhadautu_col.find_one({
-            "taiKhoan": req.taiKhoan,
-            "matKhau": req.matKhau
-        })
+def login(
+    taiKhoan: str = Form(...),
+    matKhau: str = Form(...)
+):
 
-        if not user:
-            raise HTTPException(status_code=401, detail="Sai tài khoản hoặc mật khẩu!")
+    print(f"Nhận login: taiKhoan={taiKhoan}, matKhau={matKhau}")
 
-        return {
-            "message": "Đăng nhập thành công!",
-            "maNDT": user.get("maNDT"),
-            "hoTen": user.get("hoTen"),
-            "email": user.get("email"),
-            "soDu": user.get("soDu", 0)
-        }
+    user = nhadautu_col.find_one({
+        "taiKhoan": taiKhoan,
+        "matKhau": matKhau
+    })
 
-    except Exception as e:
-        print("❌ Lỗi khi đăng nhập:", e)
-        raise HTTPException(status_code=500, detail="Lỗi server nội bộ")
+    if not user:
+        raise HTTPException(status_code=401, detail="Sai tài khoản hoặc mật khẩu!")
+
+    return {
+        "message": "Đăng nhập thành công!",
+        "maNDT": user.get("maNDT"),
+        "hoTen": user.get("hoTen"),
+        "email": user.get("email"),
+        "soDu": user.get("soDu", 0)
+    }
