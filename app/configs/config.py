@@ -10,7 +10,7 @@ load_dotenv()
 # 🗄️ Cấu hình MongoDB
 # ==========================================================
 MONGO_URI = os.getenv("MONGODB_URI", "mongodb+srv://congtiengod_db_user:ahihi1234@chungkhoan.hk5fj6c.mongodb.net/?retryWrites=true&w=majority&appName=Chungkhoan")
-DATABASE_NAME = os.getenv("MONGODB_DB", "chungkhoan_pro")
+DATABASE_NAME = os.getenv("MONGODB_DB", "QL_GiaoDich_CoPhieu")
 
 # ==========================================================
 # 🔐 Cấu hình JWT (Token đăng nhập)
