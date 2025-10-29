@@ -3,7 +3,7 @@ from app.configs.database import nhadautu_col  # giả sử đây là Motor coll
 
 router = APIRouter()
 
-@router.post("auth/login")
+@router.post("/auth/login")
 async def login(taiKhoan: str, matKhau: str):
     user = await nhadautu_col.find_one({
         "taiKhoan": taiKhoan,
