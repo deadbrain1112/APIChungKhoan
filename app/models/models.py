@@ -13,7 +13,7 @@ class CoPhieu(BaseModel):
     tenCongTy: str
     giaDongCua: Optional[float] = 0
 
-class LichSuGia(BaseModel):
+class lich_su_gia(BaseModel):
     maCP: str
     ngay: datetime
     giaMoCua: float
@@ -23,14 +23,14 @@ class LichSuGia(BaseModel):
     khoiLuong: int
     changePct: Optional[float] = 0
 
-class SoHuu(BaseModel):
+class so_huu(BaseModel):
     maCP: str
     soLuong: int
     coPhieu: CoPhieu
 
 class WatchlistItem(BaseModel):
-    soHuu: SoHuu
-    lichSuGia: Optional[LichSuGia] = None
+    soHuu: so_huu
+    lichSuGia: Optional[lich_su_gia] = None
 
 class LoginRequest(BaseModel):
     taikhoan: str

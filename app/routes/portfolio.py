@@ -8,7 +8,7 @@ router = APIRouter()
 
 @router.get("/portfolio/{taikhoan}", response_model=PortfolioSummary)
 async def get_portfolio(taikhoan: str):
-    ndt = await db.NhaDauTu.find_one({"taikhoan": taikhoan})
+    ndt = await db.nha_dau_tu.find_one({"taikhoan": taikhoan})
     if not ndt:
         raise HTTPException(status_code=404, detail="Nha dau tu khong ton tai")
 
