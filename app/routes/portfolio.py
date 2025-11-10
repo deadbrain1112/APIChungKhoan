@@ -6,13 +6,14 @@ from bson import ObjectId
 
 router = APIRouter()
 
-@router.get("/portfolio/{taikhoan}", response_model=PortfolioSummary)
-async def get_portfolio(taikhoan: str):
-    ndt = await db.nha_dau_tu.find_one({"taikhoan": taikhoan})
+@router.get("/portfolio/{maNDT}", response_model=PortfolioSummary)
+async def get_portfolio(maNDT: str):
+    ndt_id = ObjectId(maNDT)
+    ndt = await db.nha_dau_tu.find_one({"_id": ndt_id})
     if not ndt:
         raise HTTPException(status_code=404, detail="Nha dau tu khong ton tai")
 
-    nav = await compute_nav(ndt["taikhoan"])  # hoặc dùng ndt["_id"] nếu muốn
+    nav = await compute_nav(maNDT)
     pnlToday = int(nav * 0.01)
     pnlPct = pnlToday / nav * 100 if nav else 0
     return PortfolioSummary(
@@ -21,4 +22,3 @@ async def get_portfolio(taikhoan: str):
         pnlPct=pnlPct,
         cash=ndt.get("tien_kha_dung", 0)
     )
-
