@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import auth, portfolio, watchlist, top_movers
+from app.routes import auth, portfolio, watchlist, top_movers
 
 app = FastAPI(title="ChungKhoan API")
 
