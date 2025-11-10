@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from ..crud import compute_nav
 from app.models.models import PortfolioSummary
 from app.configs.database import db
+from app.crud.home import compute_nav
 from bson import ObjectId
 
 router = APIRouter()
