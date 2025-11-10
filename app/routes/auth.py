@@ -6,7 +6,12 @@ router = APIRouter()
 
 @router.post("/login", response_model=LoginResponse)
 async def login(data: LoginRequest):
-    ndt = await db.NhaDauTu.find_one({"taikhoan": data.taikhoan, "matkhau": data.matkhau})
+    ndt = await db.NhaDauTu.find_one({
+        "taikhoan": data.taikhoan.strip(),
+        "matkhau": data.matkhau.strip()
+    })
+    print(ndt)
+
     if not ndt:
         raise HTTPException(status_code=401, detail="Sai tài khoản hoặc mật khẩu")
     return LoginResponse(
