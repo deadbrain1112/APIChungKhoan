@@ -52,7 +52,7 @@ async def get_all_orders(maNDT: str):
 # ========== 4️⃣ Hủy lệnh ==========
 @router.delete("/{order_id}")
 async def cancel_order(order_id: str):
-    result = await db.LenhDat.delete_one({"_id": ObjectId(order_id)})
+    result = await db.lenh_dat.delete_one({"_id": ObjectId(order_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Không tìm thấy lệnh để hủy")
     return {"message": "Đã hủy lệnh thành công"}

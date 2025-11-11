@@ -1,7 +1,7 @@
 from bson import ObjectId
 from typing import List
 from app.configs.database import db
-from app.models.models import so_huu, CoPhieu, WatchlistItem, lich_su_gia
+from app.models.models import so_huu, co_phieu, WatchlistItem, lich_su_gia
 
 # Tính NAV
 async def compute_nav(maNDT: str) -> int:
@@ -32,7 +32,7 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
             soHuu=so_huu(
                 maCP=maCP,
                 soLuong=s["soLuong"],
-                coPhieu=CoPhieu(
+                coPhieu=co_phieu(
                     maCP=cp["maCP"],
                     tenCongTy=cp["tenCongTy"],
                     giaDongCua=lich_su["giaDongCua"] if lich_su else 0
