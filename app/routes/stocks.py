@@ -45,7 +45,7 @@ async def get_candle_data(maCP: str, limit: int = 50):
 # ================================
 @router.get("/search/{keyword}", response_model=list[co_phieu])
 async def search_stock(keyword: str):
-    cursor = db["co_phieu"].find({"tenCP": {"$regex": keyword, "$options": "i"}})
+    cursor = db["co_phieu"].find({"maCP": {"$regex": keyword, "$options": "i"}})
     result = []
     async for doc in cursor:
         result.append(co_phieu(**doc))
