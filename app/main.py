@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes import auth, portfolio, watchlist, top_movers,order
+from app.routes import auth, portfolio, watchlist, top_movers, order, stocks
 
 app = FastAPI(title="ChungKhoan API")
 
@@ -9,3 +9,4 @@ app.include_router(portfolio.router)
 app.include_router(watchlist.router)
 app.include_router(top_movers.router)
 app.include_router(order.router)
+app.include_router(stocks.router)
