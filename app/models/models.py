@@ -34,7 +34,6 @@ class lich_su_gia(BaseModel):
     khoiLuong: int
 
 
-
 # ---------- SỞ HỮU ----------
 class so_huu(BaseModel):
     maCP: str
@@ -42,7 +41,7 @@ class so_huu(BaseModel):
     coPhieu: Optional[co_phieu] = None
 
 
-# ---------- WATCHLIST (DANH MỤC QUAN TÂM) ----------
+# ---------- WATCHLIST ----------
 class WatchlistItem(BaseModel):
     soHuu: so_huu
     lichSuGia: Optional[lich_su_gia] = None
@@ -56,6 +55,10 @@ class PortfolioSummary(BaseModel):
     cash: int
 
 
+# ============================================================
+#                 📌 BỔ SUNG CHO ORDER BUY / SELL
+# ============================================================
+
 # ---------- LỆNH GIAO DỊCH ----------
 class OrderModel(BaseModel):
     maNDT: str = Field(..., description="Mã nhà đầu tư")
@@ -64,11 +67,10 @@ class OrderModel(BaseModel):
     loaiLenh: str = Field(..., description="LO / ATO / ATC")
     gia: float = Field(..., description="Giá đặt")
     soLuong: int = Field(..., description="Số lượng cổ phiếu")
-    trangThai: Optional[str] = Field(default="Chờ khớp")
+    trangThai: Optional[str] = "Chờ khớp"
     ngayGD: Optional[datetime] = Field(default_factory=datetime.now)
 
 
-# ---------- TRẢ VỀ LỆNH ----------
 class OrderResponse(BaseModel):
     _id: Optional[str]
     maNDT: str
@@ -79,3 +81,51 @@ class OrderResponse(BaseModel):
     soLuong: int
     trangThai: str
     ngayGD: datetime
+
+
+# ============================================================
+#             📌 MODEL BỔ SUNG CHO BUY / SELL
+# ============================================================
+
+# ------- CO PHIEU DUNG CHO MarketDiscovery, Buy, Sell --------
+class Stock(BaseModel):
+    maCP: str
+    tenCP: str
+    giaDongCua: float
+    giaThamChieu: float
+    phanTramThayDoi: float
+    chenhlech: Optional[float] = 0
+
+
+# ---------- DANH SÁCH LỊCH SỬ GIÁ DẠNG NẾN ----------
+class CandleEntry(BaseModel):
+    open: float
+    high: float
+    low: float
+    close: float
+    ngay: datetime
+
+
+class CandlestickData(BaseModel):
+    maCP: str
+    candles: List[CandleEntry]
+
+
+# ---------- LỆNH CHỜ (PENDING ORDER) ----------
+class PendingOrder(BaseModel):
+    _id: Optional[str]
+    maCP: str
+    soLuong: int
+    loaiLenh: str
+    gia: float
+    trangThai: str
+    thoiGian: datetime
+
+
+# ---------- STOCK OWNED (DÙNG CHO SELL FRAGMENT) ----------
+class StockOwned(BaseModel):
+    maCP: str
+    soLuong: int
+    giaVon: Optional[float] = 0      # giá vốn (nếu có)
+    giaHienTai: Optional[float] = 0  # từ bảng giá
+    giaTri: Optional[float] = 0      # soLuong * giaHienTai
