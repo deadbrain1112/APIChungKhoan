@@ -132,7 +132,7 @@ class StockOwned(BaseModel):
 
 # ---------- SAOKE(THONGKEGIAODICH) ----------
 class GiaoDich(BaseModel):
-    id: Optional[str] = Field(None, alias="_id")
+    _id: Optional[str]
     maNDT: str
     kieu: str               # cp, nap, rut
     maCP: Optional[str] = None
