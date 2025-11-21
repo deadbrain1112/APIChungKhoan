@@ -131,13 +131,15 @@ class StockOwned(BaseModel):
     giaTri: Optional[float] = 0      # soLuong * giaHienTai
 
 # ---------- SAOKE(THONGKEGIAODICH) ----------
-class BienDongTaiKhoan(BaseModel):
+class GiaoDich(BaseModel):
     id: Optional[str] = Field(None, alias="_id")
     maNDT: str
-    ngay: datetime
-    loaiGiaoDich: str  # NAP_TIEN, RUT_TIEN, MUA_CP, BAN_CP, CO_TUC, PHI_GIAO_DICH, LAI_SUAT...
-    soTienTruoc: float
-    soTienPhatSinh: float
-    soTienSau: float
-    ghiChu: Optional[str]
-
+    kieu: str               # cp, nap, rut
+    maCP: Optional[str] = None
+    loaiGD: Optional[str] = None
+    loaiLenh: Optional[str] = None
+    gia: Optional[float] = None
+    soLuong: Optional[int] = None
+    soTien: Optional[float] = None
+    trangThai: str
+    ngayGD: datetime

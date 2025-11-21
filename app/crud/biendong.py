@@ -1,77 +1,51 @@
-from typing import List, Optional
+from datetime import datetime
+from typing import List
 from bson import ObjectId
 from app.configs.database import db
-from app.models.models import BienDongTaiKhoan
-from datetime import datetime
+from app.models.models import GiaoDich
 
-# -------------------------------
-# Lấy toàn bộ biến động tài khoản theo NDT
-# -------------------------------
-async def get_all_transactions(maNDT: str) -> List[BienDongTaiKhoan]:
-    ndt_id = ObjectId(maNDT)
-    cursor = db.bien_dong_tai_khoan.find({"maNDT": ndt_id}).sort("ngay", -1)
-    data = [BienDongTaiKhoan(**t) async for t in cursor]
-    return data
+async def get_transactions(maNDT: str, kieu: str) -> List[GiaoDich]:
+    query = {"maNDT": maNDT}
 
+    if kieu != "all":
+        query["kieu"] = kieu  # cp | nap | rut
 
-# -------------------------------
-# Lọc theo loại giao dịch
-# type = ALL, DEPOSIT, WITHDRAW, TRADE
-# -------------------------------
-async def get_transactions_by_type(maNDT: str, type: str) -> List[BienDongTaiKhoan]:
-    data = await get_all_transactions(maNDT)
-
-    if type == "ALL":
-        return data
-
-    filtered = []
-
-    for t in data:
-        loai = t.loaiGiaoDich
-
-        if type == "DEPOSIT" and loai in ["NAP_TIEN", "CO_TUC", "LAI_SUAT"]:
-            filtered.append(t)
-
-        if type == "WITHDRAW" and loai in ["RUT_TIEN", "PHI_GIAO_DICH"]:
-            filtered.append(t)
-
-        if type == "TRADE" and loai in ["MUA_CP", "BAN_CP"]:
-            filtered.append(t)
-
-    return filtered
+    cursor = db.giao_dich.find(query).sort("ngayGD", -1)
+    return [GiaoDich(**t) async for t in cursor]
 
 
-# -------------------------------
-# Tính Balance + Thu/Chi tháng
-# -------------------------------
+async def create_transaction(data: GiaoDich):
+    doc = data.dict(by_alias=True)
+    result = await db.giao_dich.insert_one(doc)
+    doc["_id"] = str(result.inserted_id)
+    return doc
+
 async def compute_balance(maNDT: str):
-    data = await get_all_transactions(maNDT)
+    cursor = db.giao_dich.find({"maNDT": maNDT})
+    data = [GiaoDich(**t) async for t in cursor]
 
-    if not data:
-        return {
-            "balance": 0,
-            "monthIncome": 0,
-            "monthExpense": 0
-        }
-
-    balance = data[0].soTienSau
+    balance = 0
+    month_income = 0
+    month_expense = 0
 
     now = datetime.now()
-    month = now.month
-    year = now.year
-
-    income = 0
-    expense = 0
 
     for t in data:
-        if t.ngay.month == month and t.ngay.year == year:
-            if t.soTienPhatSinh >= 0:
-                income += t.soTienPhatSinh
-            else:
-                expense += t.soTienPhatSinh
+        # --- Tính balance chung ---
+        if t.kieu == "nap":
+            balance += t.soTien or 0
+        elif t.kieu == "rut":
+            balance -= t.soTien or 0
+
+        # --- Tính theo tháng ---
+        if t.ngayGD.month == now.month and t.ngayGD.year == now.year:
+            if t.kieu == "nap":
+                month_income += t.soTien or 0
+            elif t.kieu == "rut":
+                month_expense += t.soTien or 0
 
     return {
         "balance": balance,
-        "monthIncome": income,
-        "monthExpense": expense
+        "monthIncome": month_income,
+        "monthExpense": month_expense
     }
