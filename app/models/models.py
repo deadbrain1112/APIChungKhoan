@@ -129,3 +129,15 @@ class StockOwned(BaseModel):
     giaVon: Optional[float] = 0      # giá vốn (nếu có)
     giaHienTai: Optional[float] = 0  # từ bảng giá
     giaTri: Optional[float] = 0      # soLuong * giaHienTai
+
+# ---------- SAOKE(THONGKEGIAODICH) ----------
+class BienDongTaiKhoan(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    maNDT: str
+    ngay: datetime
+    loaiGiaoDich: str  # NAP_TIEN, RUT_TIEN, MUA_CP, BAN_CP, CO_TUC, PHI_GIAO_DICH, LAI_SUAT...
+    soTienTruoc: float
+    soTienPhatSinh: float
+    soTienSau: float
+    ghiChu: Optional[str]
+
