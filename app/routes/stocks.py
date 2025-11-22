@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.configs.database import db
 from app.models.models import co_phieu, lich_su_gia
+from fastapi import Query
 
 router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
 
@@ -8,13 +9,13 @@ router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
 # 1. Lấy danh sách cổ phiếu
 # ==========================
 @router.get("/", response_model=list[co_phieu])
-async def get_stock_list():
-    cursor = db["co_phieu"].find()
+async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(20, ge=1)):
+    skip = (page - 1) * size
+    cursor = db["co_phieu"].find().skip(skip).limit(size)
     result = []
     async for doc in cursor:
         result.append(co_phieu(**doc))
     return result
-
 
 # ============================================
 # 2. Lịch sử giá dạng candlestick cho 1 mã CP
