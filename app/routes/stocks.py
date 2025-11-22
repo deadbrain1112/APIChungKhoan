@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
 # 1. Lấy danh sách cổ phiếu
 # ==========================
 @router.get("/", response_model=list[co_phieu])
-async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(20, ge=1)):
+async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(10, ge=1)):
     skip = (page - 1) * size
     cursor = db["co_phieu"].find().skip(skip).limit(size)
     result = []
