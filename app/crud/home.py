@@ -4,43 +4,56 @@ from app.configs.database import db
 from app.models.models import so_huu, co_phieu, WatchlistItem, lich_su_gia
 
 # Tính NAV
-async def compute_nav(maNDT: str) -> int:
+async def compute_nav(maNDT: str) -> float:
     ndt_id = ObjectId(maNDT)
-    ndt = await db.nha_dau_tu.find_one({"_id": ndt_id})
-    if not ndt:
-        return 0
-
+    # Lấy tất cả cổ phiếu sở hữu
+    holdings = db.so_huu.find({"maNDT": ndt_id})
     total_value = 0
-    async for s in db.so_huu.find({"maNDT": ndt_id}):
-        maCP = s["maCP"]
+    async for h in holdings:
+        maCP = h["maCP"]
+        qty = h["soLuong"]
         lich_su = await db.lich_su_gia.find_one({"maCP": maCP}, sort=[("ngay", -1)])
-        giaDongCua = lich_su["giaDongCua"] if lich_su else 0
-        total_value += giaDongCua * s["soLuong"]
+        gia_dong_cua = lich_su["giaDongCua"] if lich_su else 0
+        total_value += qty * gia_dong_cua
 
-    nav = total_value + ndt.get("tien_kha_dung", 0) - ndt.get("tong_no", 0)
+    ndt = await db.nha_dau_tu.find_one({"_id": ndt_id})
+    cash = ndt.get("cash", 0)
+    debt = ndt.get("debt", 0)
+
+    nav = total_value + cash - debt
     return nav
+
 
 # Lấy watchlist
 async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
-    ndt_id = ObjectId(maNDT)
     result = []
-    async for s in db.so_huu.find({"maNDT": ndt_id}):
+
+    # Lưu ý: so_huu.maNDT là string trong DB, không convert sang ObjectId
+    async for s in db.so_huu.find({"maNDT": maNDT}):
         maCP = s["maCP"]
+
+        # Lấy thông tin cổ phiếu
         cp = await db.co_phieu.find_one({"maCP": maCP})
+        if not cp:
+            continue  # Bỏ qua nếu cổ phiếu không tồn tại
+
+        # Lấy nến mới nhất
         lich_su = await db.lich_su_gia.find_one({"maCP": maCP}, sort=[("ngay", -1)])
+
         item = WatchlistItem(
             soHuu=so_huu(
                 maCP=maCP,
-                soLuong=s["soLuong"],
+                soLuong=s.get("soLuong", 0),
                 coPhieu=co_phieu(
                     maCP=cp["maCP"],
-                    tenCongTy=cp["tenCongTy"],
-                    giaDongCua=lich_su["giaDongCua"] if lich_su else 0
+                    tenCongTy=cp.get("tenCongTy", "N/A"),
+                    giaDongCua=lich_su["giaDongCua"] if lich_su else cp.get("giaDongCua", 0)
                 )
             ),
             lichSuGia=lich_su_gia(**lich_su) if lich_su else None
         )
         result.append(item)
+
     return result
 
 # Lấy top movers

@@ -38,7 +38,7 @@ async def get_candle_data(maCP: str, limit: int = 50):
     if not result:
         raise HTTPException(status_code=404, detail="Không có lịch sử giá")
 
-    return result[::-1]   # đảo lại để chart đúng thứ tự thời gian
+    return result[::-1]
 
 
 # ================================
