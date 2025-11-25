@@ -32,6 +32,7 @@ class lich_su_gia(BaseModel):
     giaCaoNhat: float
     giaThapNhat: float
     khoiLuong: int
+    changePct: float | None = None
 
 
 # ---------- SỞ HỮU ----------
