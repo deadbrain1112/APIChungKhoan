@@ -28,17 +28,31 @@ async def compute_nav(maNDT: str) -> float:
 async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
     result = []
 
-    # Lưu ý: so_huu.maNDT là string trong DB, không convert sang ObjectId
     async for s in db.so_huu.find({"maNDT": maNDT}):
         maCP = s["maCP"]
 
-        # Lấy thông tin cổ phiếu
         cp = await db.co_phieu.find_one({"maCP": maCP})
         if not cp:
-            continue  # Bỏ qua nếu cổ phiếu không tồn tại
+            continue
 
-        # Lấy nến mới nhất
-        lich_su = await db.lich_su_gia.find_one({"maCP": maCP}, sort=[("ngay", -1)])
+        lich_su = await db.lich_su_gia.find_one(
+            {"maCP": maCP},
+            sort=[("ngay", -1)]
+        )
+
+        # ----- TÍNH % thay đổi -----
+        changePct = None
+        if lich_su:
+            giaTC = lich_su.get("giaTC", 0)
+            giaDong = lich_su.get("giaDongCua", 0)
+
+            if giaTC and giaTC != 0:
+                changePct = ((giaDong - giaTC) / giaTC) * 100
+            else:
+                changePct = 0.0   # Tránh chia 0
+
+            # Gán vào dict để model nhận được
+            lich_su["changePct"] = changePct
 
         item = WatchlistItem(
             soHuu=so_huu(
@@ -52,9 +66,11 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
             ),
             lichSuGia=lich_su_gia(**lich_su) if lich_su else None
         )
+
         result.append(item)
 
     return result
+
 
 # Lấy top movers
 async def get_top_movers(mode: str) -> List[lich_su_gia]:
