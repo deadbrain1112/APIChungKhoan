@@ -35,24 +35,29 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
         if not cp:
             continue
 
+        # Lấy nến mới nhất
         lich_su = await db.lich_su_gia.find_one(
             {"maCP": maCP},
             sort=[("ngay", -1)]
         )
 
-        # ----- TÍNH % thay đổi -----
-        changePct = None
+        changePct = 0.0
         if lich_su:
-            giaTC = lich_su.get("giaTC", 0)
-            giaDong = lich_su.get("giaDongCua", 0)
+            giaDongHienTai = lich_su.get("giaDongCua", 0)
 
-            if giaTC and giaTC != 0:
-                changePct = ((giaDong - giaTC) / giaTC) * 100
-            else:
-                changePct = 0.0   # Tránh chia 0
+            # Lấy giá đóng cửa phiên trước (nếu có)
+            lich_su_truoc = await db.lich_su_gia.find_one(
+                {"maCP": maCP, "ngay": {"$lt": lich_su["ngay"]}},
+                sort=[("ngay", -1)]
+            )
+            giaDongTruoc = lich_su_truoc.get("giaDongCua", giaDongHienTai) if lich_su_truoc else giaDongHienTai
 
-            # Gán vào dict để model nhận được
+            # Tính % thay đổi
+            if giaDongTruoc != 0:
+                changePct = ((giaDongHienTai - giaDongTruoc) / giaDongTruoc) * 100
+
             lich_su["changePct"] = changePct
+            lich_su["giaTC"] = giaDongTruoc
 
         item = WatchlistItem(
             soHuu=so_huu(
