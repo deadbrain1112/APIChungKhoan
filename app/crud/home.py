@@ -57,55 +57,100 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
     return result
 
 # Lấy top movers
+from datetime import datetime
+from app.configs.database import db
+from app.models.models import lich_su_gia
+from typing import List
+
+
 async def get_top_movers(mode: str) -> List[lich_su_gia]:
+    # --- 1. Lấy ngày mới nhất ---
+    newest_doc = await db.lich_su_gia.find_one(sort=[("ngay", -1)])
+    if not newest_doc:
+        return []
 
-    if mode in ["gainers", "losers"]:
-        pipeline = [
-            # 1. Lấy phiên mới nhất theo từng mã
-            {"$sort": {"maCP": 1, "ngay": -1}},
-            {"$group": {
-                "_id": "$maCP",
-                "maCP": {"$first": "$maCP"},
-                "ngay": {"$first": "$ngay"},
-                "giaMoCua": {"$first": "$giaMoCua"},
-                "giaDongCua": {"$first": "$giaDongCua"},
-                "giaCaoNhat": {"$first": "$giaCaoNhat"},
-                "giaThapNhat": {"$first": "$giaThapNhat"},
-                "khoiLuong": {"$first": "$khoiLuong"},
-            }},
-            # 2. Tính tỷ lệ phần trăm thay đổi
-            {"$project": {
-                "maCP": 1,
-                "ngay": 1,
-                "giaMoCua": 1,
-                "giaDongCua": 1,
-                "giaCaoNhat": 1,
-                "giaThapNhat": 1,
-                "khoiLuong": 1,
-                "changePct": {
-                    "$multiply": [
-                        {
-                            "$divide": [
-                                {"$subtract": ["$giaDongCua", "$giaMoCua"]},
-                                "$giaMoCua"
-                            ]
-                        },
-                        100
-                    ]
-                }
+    newest_date = newest_doc["ngay"]
+
+    # --- 2. Lấy ngày liền trước ---
+    prev_doc = await db.lich_su_gia.find_one(
+        {"ngay": {"$lt": newest_date}},
+        sort=[("ngay", -1)]
+    )
+    if not prev_doc:
+        return []
+
+    previous_date = prev_doc["ngay"]
+
+    # --- 3. Join today's & yesterday's ---
+    pipeline = [
+        {"$match": {"ngay": {"$in": [newest_date, previous_date]}}},
+        {"$sort": {"maCP": 1, "ngay": 1}},
+
+        {"$group": {
+            "_id": "$maCP",
+            "records": {"$push": {
+                "ngay": "$ngay",
+                "giaDongCua": "$giaDongCua",
+                "giaMoCua": "$giaMoCua",
+                "giaCaoNhat": "$giaCaoNhat",
+                "giaThapNhat": "$giaThapNhat",
+                "khoiLuong": "$khoiLuong"
             }}
-        ]
+        }},
 
-        # 3. Sort theo tăng hoặc giảm
-        if mode == "gainers":
-            pipeline.append({"$sort": {"changePct": -1}})
-        else:
-            pipeline.append({"$sort": {"changePct": 1}})
+        # Lọc những mã có đúng 2 phiên
+        {"$match": {"records.1": {"$exists": True}}},
 
-        # 4. Lấy top 5
-        pipeline.append({"$limit": 5})
+        # Tính % thay đổi
+        {"$project": {
+            "maCP": "$_id",
+            "today": {"$arrayElemAt": ["$records", 1]},
+            "yesterday": {"$arrayElemAt": ["$records", 0]},
+            "changePct": {
+                "$multiply": [
+                    {"$divide": [
+                        {"$subtract": [
+                            {"$arrayElemAt": ["$records.giaDongCua", 1]},
+                            {"$arrayElemAt": ["$records.giaDongCua", 0]}
+                        ]},
+                        {"$arrayElemAt": ["$records.giaDongCua", 0]}
+                    ]},
+                    100
+                ]
+            }
+        }}
+    ]
 
-        cursor = db.lich_su_gia.aggregate(pipeline)
-        data = [d async for d in cursor]
-        return [lich_su_gia(**d) for d in data]
+    # --- Sort theo mode ---
+    if mode == "gainers":
+        pipeline.append({"$sort": {"changePct": -1}})
+    elif mode == "losers":
+        pipeline.append({"$sort": {"changePct": 1}})
+    elif mode == "volume":
+        pipeline.append({"$sort": {"today.khoiLuong": -1}})
+    elif mode == "value":
+        pipeline.append({"$sort": {
+            "value": -1
+        }})
+        pipeline.insert(-1, {
+            "$addFields": {
+                "value": {"$multiply": ["$today.giaDongCua", "$today.khoiLuong"]}
+            }
+        })
+
+    pipeline.append({"$limit": 5})
+
+    cursor = db.lich_su_gia.aggregate(pipeline)
+    data = [d async for d in cursor]
+
+    # Convert output về mô hình lich_su_gia (trả về today)
+    result = []
+    for d in data:
+        today = d["today"]
+        today["maCP"] = d["maCP"]
+        today["changePct"] = d["changePct"]
+        result.append(lich_su_gia(**today))
+
+    return result
+
 
