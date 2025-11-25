@@ -58,32 +58,54 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
 
 # Lấy top movers
 async def get_top_movers(mode: str) -> List[lich_su_gia]:
-    data = []
-    if mode == "volume":
-        cursor = db.lich_su_gia.find().sort("khoiLuong", -1).limit(5)
-        data = [d async for d in cursor]
-    elif mode == "value":
+
+    if mode in ["gainers", "losers"]:
         pipeline = [
-            {"$project": {"maCP":1, "ngay":1, "giaDongCua":1, "giaMoCua":1,
-                          "giaCaoNhat":1, "giaThapNhat":1, "khoiLuong":1,
-                          "value": {"$multiply":["$giaDongCua","$khoiLuong"]}} },
-            {"$sort": {"value": -1}},
-            {"$limit": 5}
+            # 1. Lấy phiên mới nhất theo từng mã
+            {"$sort": {"maCP": 1, "ngay": -1}},
+            {"$group": {
+                "_id": "$maCP",
+                "maCP": {"$first": "$maCP"},
+                "ngay": {"$first": "$ngay"},
+                "giaMoCua": {"$first": "$giaMoCua"},
+                "giaDongCua": {"$first": "$giaDongCua"},
+                "giaCaoNhat": {"$first": "$giaCaoNhat"},
+                "giaThapNhat": {"$first": "$giaThapNhat"},
+                "khoiLuong": {"$first": "$khoiLuong"},
+            }},
+            # 2. Tính tỷ lệ phần trăm thay đổi
+            {"$project": {
+                "maCP": 1,
+                "ngay": 1,
+                "giaMoCua": 1,
+                "giaDongCua": 1,
+                "giaCaoNhat": 1,
+                "giaThapNhat": 1,
+                "khoiLuong": 1,
+                "changePct": {
+                    "$multiply": [
+                        {
+                            "$divide": [
+                                {"$subtract": ["$giaDongCua", "$giaMoCua"]},
+                                "$giaMoCua"
+                            ]
+                        },
+                        100
+                    ]
+                }
+            }}
         ]
-        cursor = db.lich_su_gia.aggregate(pipeline)
-        data = [d async for d in cursor]
-    elif mode in ["gainers", "losers"]:
-        pipeline = [
-            {"$project": {"maCP":1, "ngay":1, "giaDongCua":1, "giaMoCua":1,
-                          "giaCaoNhat":1, "giaThapNhat":1, "khoiLuong":1,
-                          "changePct": {"$multiply":[{"$divide":[{"$subtract":["$giaDongCua","$giaMoCua"]},"$giaMoCua"]},100]}} }
-        ]
+
+        # 3. Sort theo tăng hoặc giảm
         if mode == "gainers":
             pipeline.append({"$sort": {"changePct": -1}})
         else:
             pipeline.append({"$sort": {"changePct": 1}})
+
+        # 4. Lấy top 5
         pipeline.append({"$limit": 5})
+
         cursor = db.lich_su_gia.aggregate(pipeline)
         data = [d async for d in cursor]
+        return [lich_su_gia(**d) for d in data]
 
-    return [lich_su_gia(**d) for d in data]
