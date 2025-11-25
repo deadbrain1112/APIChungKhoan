@@ -59,31 +59,107 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
 # Lấy top movers
 async def get_top_movers(mode: str) -> List[lich_su_gia]:
     data = []
+
     if mode == "volume":
-        cursor = db.lich_su_gia.find().sort("khoiLuong", -1).limit(5)
-        data = [d async for d in cursor]
-    elif mode == "value":
+        # Thêm changePct vào luôn
         pipeline = [
-            {"$project": {"maCP":1, "ngay":1, "giaDongCua":1, "giaMoCua":1,
-                          "giaCaoNhat":1, "giaThapNhat":1, "khoiLuong":1,
-                          "value": {"$multiply":["$giaDongCua","$khoiLuong"]}} },
+            {
+                "$project": {
+                    "maCP": 1, "ngay": 1, "giaDongCua": 1, "giaMoCua": 1,
+                    "giaCaoNhat": 1, "giaThapNhat": 1, "khoiLuong": 1,
+                    "changePct": {
+                        "$cond": [
+                            {"$eq": ["$giaMoCua", 0]},
+                            0,
+                            {
+                                "$multiply": [
+                                    {
+                                        "$divide": [
+                                            {"$subtract": ["$giaDongCua", "$giaMoCua"]},
+                                            "$giaMoCua"
+                                        ]
+                                    },
+                                    100
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            {"$sort": {"khoiLuong": -1}},
+            {"$limit": 5}
+        ]
+        cursor = db.lich_su_gia.aggregate(pipeline)
+        data = [d async for d in cursor]
+
+    elif mode == "value":
+        # Thêm changePct + tránh chia 0
+        pipeline = [
+            {
+                "$project": {
+                    "maCP": 1, "ngay": 1, "giaDongCua": 1, "giaMoCua": 1,
+                    "giaCaoNhat": 1, "giaThapNhat": 1, "khoiLuong": 1,
+                    "value": {"$multiply": ["$giaDongCua", "$khoiLuong"]},
+                    "changePct": {
+                        "$cond": [
+                            {"$eq": ["$giaMoCua", 0]},
+                            0,
+                            {
+                                "$multiply": [
+                                    {
+                                        "$divide": [
+                                            {"$subtract": ["$giaDongCua", "$giaMoCua"]},
+                                            "$giaMoCua"
+                                        ]
+                                    },
+                                    100
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
             {"$sort": {"value": -1}},
             {"$limit": 5}
         ]
         cursor = db.lich_su_gia.aggregate(pipeline)
         data = [d async for d in cursor]
+
     elif mode in ["gainers", "losers"]:
         pipeline = [
-            {"$project": {"maCP":1, "ngay":1, "giaDongCua":1, "giaMoCua":1,
-                          "giaCaoNhat":1, "giaThapNhat":1, "khoiLuong":1,
-                          "changePct": {"$multiply":[{"$divide":[{"$subtract":["$giaDongCua","$giaMoCua"]},"$giaMoCua"]},100]}} }
+            {
+                "$project": {
+                    "maCP": 1, "ngay": 1, "giaDongCua": 1, "giaMoCua": 1,
+                    "giaCaoNhat": 1, "giaThapNhat": 1, "khoiLuong": 1,
+                    "changePct": {
+                        "$cond": [
+                            {"$eq": ["$giaMoCua", 0]},
+                            0,
+                            {
+                                "$multiply": [
+                                    {
+                                        "$divide": [
+                                            {"$subtract": ["$giaDongCua", "$giaMoCua"]},
+                                            "$giaMoCua"
+                                        ]
+                                    },
+                                    100
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
         ]
+
         if mode == "gainers":
             pipeline.append({"$sort": {"changePct": -1}})
         else:
             pipeline.append({"$sort": {"changePct": 1}})
+
         pipeline.append({"$limit": 5})
         cursor = db.lich_su_gia.aggregate(pipeline)
         data = [d async for d in cursor]
 
     return [lich_su_gia(**d) for d in data]
+
