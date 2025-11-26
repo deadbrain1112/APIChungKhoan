@@ -8,7 +8,6 @@ router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
 # ==========================
 # 1. Lấy danh sách cổ phiếu
 # ==========================
-from bson import ObjectId
 
 def to_string_id(doc):
     if "_id" in doc:
@@ -34,24 +33,20 @@ async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(10, ge=1)
 
         if latest_price:
             latest_price = to_string_id(latest_price)
-
-            gia_dong_cua_hom_truoc = latest_price.get("giaDongCua", 0)
-            gia_mo_cua = latest_price.get("giaMoCua", 0)
-
-            change = gia_dong_cua_hom_truoc - gia_mo_cua
-
-            changePct = 0
-            if gia_mo_cua != 0:
-                changePct = (change / gia_mo_cua) * 100
+            gia_dong_cua = latest_price.get("giaDongCua", cp.get("giaThamChieu", 0))
+            gia_mo_cua = latest_price.get("giaMoCua", cp.get("giaThamChieu", 0))
         else:
-            gia_dong_cua_hom_truoc = None
-            change = None
-            changePct = None
+            # Nếu không có lịch sử giá, lấy giá tham chiếu
+            gia_dong_cua = cp.get("giaThamChieu", 0)
+            gia_mo_cua = cp.get("giaThamChieu", 0)
+
+        chenhLechGia = gia_dong_cua - gia_mo_cua
+        changePct = (chenhLechGia / gia_mo_cua * 100) if gia_mo_cua != 0 else 0
 
         result.append({
             **cp,
-            "giaDongCuaHomTruoc": gia_dong_cua_hom_truoc,
-            "chenhLechGia": change,
+            "giaDongCuaHomTruoc": gia_dong_cua,
+            "chenhLechGia": chenhLechGia,
             "changePct": changePct
         })
 
