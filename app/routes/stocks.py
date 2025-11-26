@@ -52,7 +52,7 @@ async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(10, ge=1)
             **cp,
             "giaDongCuaHomTruoc": gia_dong_cua_hom_truoc,
             "chenhLechGia": change,
-            "chenhLechPhanTram": changePct
+            "changePct": changePct
         })
 
     return result
