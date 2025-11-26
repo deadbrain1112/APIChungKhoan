@@ -1,8 +1,13 @@
+from datetime import datetime
+
 from bson import ObjectId
 from typing import List
 from app.configs.database import db
 from app.models.models import so_huu, co_phieu, WatchlistItem, lich_su_gia
 
+async def get_so_huu(maNDT: str):
+    cursor = db.so_huu.find({"maNDT": maNDT})
+    return [so_huu(**doc) async for doc in cursor]
 # Tính NAV
 async def compute_nav(maNDT: str) -> float:
     ndt_id = ObjectId(maNDT)
@@ -25,56 +30,50 @@ async def compute_nav(maNDT: str) -> float:
 
 
 # Lấy watchlist
-async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
-    result = []
+async def get_watchlist(maNDT: str):
+    data = []
+    so_huu_list = await get_so_huu(maNDT)
 
-    async for s in db.so_huu.find({"maNDT": maNDT}):
-        maCP = s["maCP"]
+    for so_huu in so_huu_list:
+        maCP = so_huu.maCP
 
-        cp = await db.co_phieu.find_one({"maCP": maCP})
-        if not cp:
-            continue
-
-        # Lấy nến mới nhất
+        # --- Lấy lịch sử giá gần nhất ---
         lich_su = await db.lich_su_gia.find_one(
             {"maCP": maCP},
-            sort=[("ngay", -1)]
+            sort=[("ngay", -1)]   # sắp xếp giảm dần -> lấy bản mới nhất
         )
 
-        changePct = 0.0
         if lich_su:
-            giaDongHienTai = lich_su.get("giaDongCua", 0)
-
-            # Lấy giá đóng cửa phiên trước (nếu có)
-            lich_su_truoc = await db.lich_su_gia.find_one(
-                {"maCP": maCP, "ngay": {"$lt": lich_su["ngay"]}},
-                sort=[("ngay", -1)]
+            # ---- Có lịch sử giá: dùng giá đóng cửa gần nhất ----
+            item = WatchlistItem(
+                soHuu=so_huu,
+                lichSuGia=lich_su_gia(**lich_su)
             )
-            giaDongTruoc = lich_su_truoc.get("giaDongCua", giaDongHienTai) if lich_su_truoc else giaDongHienTai
-
-            # Tính % thay đổi
-            if giaDongTruoc != 0:
-                changePct = ((giaDongHienTai - giaDongTruoc) / giaDongTruoc) * 100
-
-            lich_su["changePct"] = changePct
-            lich_su["giaTC"] = giaDongTruoc
-
-        item = WatchlistItem(
-            soHuu=so_huu(
-                maCP=maCP,
-                soLuong=s.get("soLuong", 0),
-                coPhieu=co_phieu(
-                    maCP=cp["maCP"],
-                    tenCongTy=cp.get("tenCongTy", "N/A"),
-                    giaDongCua=lich_su["giaDongCua"] if lich_su else cp.get("giaDongCua", 0)
+        else:
+            # ---- Không có lịch sử giá: fallback sang giá tham chiếu ----
+            cp = await db.co_phieu.find_one({"maCP": maCP})
+            if cp:
+                fake_lich_su = lich_su_gia(
+                    maCP=maCP,
+                    ngay=datetime.now(),
+                    giaMoCua=cp["giaThamChieu"],
+                    giaDongCua=cp["giaThamChieu"],
+                    giaCaoNhat=cp["giaThamChieu"],
+                    giaThapNhat=cp["giaThamChieu"],
+                    khoiLuong=0
                 )
-            ),
-            lichSuGia=lich_su_gia(**lich_su) if lich_su else None
-        )
+            else:
+                fake_lich_su = None  # phòng trường hợp cổ phiếu cũng không có
 
-        result.append(item)
+            item = WatchlistItem(
+                soHuu=so_huu,
+                lichSuGia=fake_lich_su
+            )
 
-    return result
+        data.append(item)
+
+    return data
+
 
 
 # Lấy top movers
