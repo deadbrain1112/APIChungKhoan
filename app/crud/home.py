@@ -109,16 +109,27 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
 
     return result
 
-
-
-
-
-# Lấy top movers
 # Lấy top movers
 async def get_top_movers(mode: str) -> List[lich_su_gia]:
     data = []
 
-    # COMMON PIPELINE PART: join co_phieu để lấy giaThamChieu
+    # ==========================================
+    # STEP 1: Lấy lịch sử giá gần nhất của mỗi cổ phiếu
+    # ==========================================
+    latest_price_stage = [
+        {"$sort": {"maCP": 1, "ngay": -1}},
+        {
+            "$group": {
+                "_id": "$maCP",
+                "latest": {"$first": "$$ROOT"}  # lấy bản ghi mới nhất
+            }
+        },
+        {"$replaceWith": "$latest"}
+    ]
+
+    # ==========================================
+    # STEP 2: Join co_phieu để lấy giá tham chiếu
+    # ==========================================
     base_lookup = [
         {
             "$lookup": {
@@ -142,7 +153,9 @@ async def get_top_movers(mode: str) -> List[lich_su_gia]:
         }
     ]
 
-    # COMMON changePct
+    # ==========================================
+    # STEP 3: COMMON changePct
+    # ==========================================
     changePct_field = {
         "$cond": [
             {"$eq": ["$giaMoCua", 0]},
@@ -161,9 +174,13 @@ async def get_top_movers(mode: str) -> List[lich_su_gia]:
         ]
     }
 
+    # ==========================================
+    # CHỌN MODE
+    # ==========================================
+
     # ---------- MODE = VOLUME ----------
     if mode == "volume":
-        pipeline = base_lookup + [
+        pipeline = latest_price_stage + base_lookup + [
             {
                 "$project": {
                     "maCP": 1, "ngay": 1, "giaDongCua": 1, "giaMoCua": 1,
@@ -177,7 +194,7 @@ async def get_top_movers(mode: str) -> List[lich_su_gia]:
 
     # ---------- MODE = VALUE ----------
     elif mode == "value":
-        pipeline = base_lookup + [
+        pipeline = latest_price_stage + base_lookup + [
             {
                 "$project": {
                     "maCP": 1, "ngay": 1, "giaDongCua": 1, "giaMoCua": 1,
@@ -192,7 +209,7 @@ async def get_top_movers(mode: str) -> List[lich_su_gia]:
 
     # ---------- MODE = GAINERS / LOSERS ----------
     elif mode in ["gainers", "losers"]:
-        pipeline = base_lookup + [
+        pipeline = latest_price_stage + base_lookup + [
             {
                 "$project": {
                     "maCP": 1, "ngay": 1, "giaDongCua": 1, "giaMoCua": 1,
@@ -209,10 +226,9 @@ async def get_top_movers(mode: str) -> List[lich_su_gia]:
 
         pipeline.append({"$limit": 5})
 
-    # ---------- RUN QUERY ----------
+
     cursor = db.lich_su_gia.aggregate(pipeline)
     data = [d async for d in cursor]
 
     return [lich_su_gia(**d) for d in data]
-
 
