@@ -8,6 +8,14 @@ router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
 # ==========================
 # 1. Lấy danh sách cổ phiếu
 # ==========================
+from bson import ObjectId
+
+def to_string_id(doc):
+    if "_id" in doc:
+        doc["_id"] = str(doc["_id"])
+    return doc
+
+
 @router.get("/", response_model=list[dict])
 async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(10, ge=1)):
     skip = (page - 1) * size
@@ -16,40 +24,39 @@ async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(10, ge=1)
     result = []
 
     async for cp in cursor:
+        cp = to_string_id(cp)   # convert ObjectId của cp
 
-        # Lấy lịch sử giá mới nhất của cổ phiếu
+        # Lấy lịch sử giá gần nhất
         latest_price = await db["lich_su_gia"].find_one(
             {"maCP": cp["maCP"]},
             sort=[("ngay", -1)]
         )
 
-        # Nếu không có lịch sử giá
-        if latest_price is None:
-            gia_dong_cua_hom_truoc = None
-            change = None
-            changePct = None
-        else:
+        if latest_price:
+            latest_price = to_string_id(latest_price)
+
             gia_dong_cua_hom_truoc = latest_price.get("giaDongCua", 0)
             gia_mo_cua = latest_price.get("giaMoCua", 0)
 
-            # Tính chênh lệch
             change = gia_dong_cua_hom_truoc - gia_mo_cua
 
-            # Phần trăm thay đổi
-            if gia_mo_cua == 0:
-                changePct = 0
-            else:
+            changePct = 0
+            if gia_mo_cua != 0:
                 changePct = (change / gia_mo_cua) * 100
+        else:
+            gia_dong_cua_hom_truoc = None
+            change = None
+            changePct = None
 
-        # Trả về object có thêm dữ liệu
         result.append({
-            **cp,   # toàn bộ thông tin trong co_phieu
+            **cp,
             "giaDongCuaHomTruoc": gia_dong_cua_hom_truoc,
             "chenhLechGia": change,
             "chenhLechPhanTram": changePct
         })
 
     return result
+
 
 
 # ============================================
