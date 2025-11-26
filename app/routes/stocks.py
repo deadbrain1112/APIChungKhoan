@@ -28,29 +28,33 @@ async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(10, ge=1)
         # Lấy lịch sử giá gần nhất
         latest_price = await db["lich_su_gia"].find_one(
             {"maCP": cp["maCP"]},
-            sort=[("ngay", -1)]
+            sort=[("ngay", -1)]  # sắp xếp ngày giảm dần, lấy bản ghi mới nhất
         )
 
         if latest_price:
             latest_price = to_string_id(latest_price)
             gia_dong_cua = latest_price.get("giaDongCua", cp.get("giaThamChieu", 0))
             gia_mo_cua = latest_price.get("giaMoCua", cp.get("giaThamChieu", 0))
+            ngay = latest_price.get("ngay")  # ngày gần nhất
         else:
             # Nếu không có lịch sử giá, lấy giá tham chiếu
             gia_dong_cua = cp.get("giaThamChieu", 0)
             gia_mo_cua = cp.get("giaThamChieu", 0)
+            ngay = None
 
         chenhLechGia = gia_dong_cua - gia_mo_cua
         changePct = (chenhLechGia / gia_mo_cua * 100) if gia_mo_cua != 0 else 0
 
         result.append({
             **cp,
+            "ngayGanNhat": ngay,
             "giaDongCuaHomTruoc": gia_dong_cua,
             "chenhLechGia": chenhLechGia,
             "changePct": changePct
         })
 
     return result
+
 
 
 
