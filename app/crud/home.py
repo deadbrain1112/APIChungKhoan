@@ -30,49 +30,67 @@ async def compute_nav(maNDT: str) -> float:
 
 
 # Lấy watchlist
-async def get_watchlist(maNDT: str):
-    data = []
-    so_huu_list = await get_so_huu(maNDT)
+async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
+    result = []
 
-    for so_huu in so_huu_list:
-        maCP = so_huu.maCP
+    # --- lấy danh sách sở hữu ---
+    async for s in db.so_huu.find({"maNDT": maNDT}):
+        maCP = s["maCP"]
 
-        # --- Lấy lịch sử giá gần nhất ---
+        # lấy thông tin cổ phiếu
+        cp = await db.co_phieu.find_one({"maCP": maCP})
+        if not cp:
+            continue
+
+        # lấy lịch sử mới nhất
         lich_su = await db.lich_su_gia.find_one(
             {"maCP": maCP},
-            sort=[("ngay", -1)]   # sắp xếp giảm dần -> lấy bản mới nhất
+            sort=[("ngay", -1)]
         )
 
+        # ======= XỬ LÝ LỊCH SỬ GIÁ ========
         if lich_su:
-            # ---- Có lịch sử giá: dùng giá đóng cửa gần nhất ----
-            item = WatchlistItem(
-                soHuu=so_huu,
-                lichSuGia=lich_su_gia(**lich_su)
-            )
+            # Nếu có lịch sử: chuyển thành model lich_su_gia
+            lich_su_model = lich_su_gia(**lich_su)
+
         else:
-            # ---- Không có lịch sử giá: fallback sang giá tham chiếu ----
-            cp = await db.co_phieu.find_one({"maCP": maCP})
-            if cp:
-                fake_lich_su = lich_su_gia(
-                    maCP=maCP,
-                    ngay=datetime.now(),
-                    giaMoCua=cp["giaThamChieu"],
-                    giaDongCua=cp["giaThamChieu"],
-                    giaCaoNhat=cp["giaThamChieu"],
-                    giaThapNhat=cp["giaThamChieu"],
-                    khoiLuong=0
-                )
-            else:
-                fake_lich_su = None  # phòng trường hợp cổ phiếu cũng không có
+            # Nếu không có lịch sử → tạo lịch sử ảo từ giá tham chiếu
+            giaTC = cp.get("giaThamChieu", 0)
 
-            item = WatchlistItem(
-                soHuu=so_huu,
-                lichSuGia=fake_lich_su
+            lich_su_model = lich_su_gia(
+                maCP=maCP,
+                ngay=datetime.now(),
+                giaMoCua=giaTC,
+                giaDongCua=giaTC,
+                giaCaoNhat=giaTC,
+                giaThapNhat=giaTC,
+                khoiLuong=0,
             )
 
-        data.append(item)
+        # ======= GẮN VÀO MODEL so_huu ========
+        so_huu_model = so_huu(
+            maCP=maCP,
+            soLuong=s.get("soLuong", 0),
+            coPhieu=co_phieu(
+                maCP=cp["maCP"],
+                tenCongTy=cp.get("tenCongTy", "N/A"),
+                giaThamChieu=cp.get("giaThamChieu", 0),
+                giaTran=cp.get("giaTran", 0),
+                giaSan=cp.get("giaSan", 0),
+                giaDongCua=lich_su_model.giaDongCua  # dùng giá đóng cửa từ lịch sử / tham chiếu
+            )
+        )
 
-    return data
+        # ======= GOM LẠI WATCHLIST ITEM ========
+        result.append(
+            WatchlistItem(
+                soHuu=so_huu_model,
+                lichSuGia=lich_su_model
+            )
+        )
+
+    return result
+
 
 
 
