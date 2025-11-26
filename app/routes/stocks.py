@@ -48,7 +48,7 @@ async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(10, ge=1)
         result.append({
             **cp,
             "ngayGanNhat": ngay,
-            "giaDongCuaHomTruoc": gia_dong_cua,
+            "giaDongCua": gia_dong_cua,
             "chenhLechGia": chenhLechGia,
             "changePct": changePct
         })
