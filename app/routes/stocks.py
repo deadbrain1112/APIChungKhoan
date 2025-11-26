@@ -8,14 +8,49 @@ router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
 # ==========================
 # 1. Lấy danh sách cổ phiếu
 # ==========================
-@router.get("/", response_model=list[co_phieu])
+@router.get("/", response_model=list[dict])
 async def get_stock_list(page: int = Query(1, ge=1), size: int = Query(10, ge=1)):
     skip = (page - 1) * size
+
     cursor = db["co_phieu"].find().skip(skip).limit(size)
     result = []
-    async for doc in cursor:
-        result.append(co_phieu(**doc))
+
+    async for cp in cursor:
+
+        # Lấy lịch sử giá mới nhất của cổ phiếu
+        latest_price = await db["lich_su_gia"].find_one(
+            {"maCP": cp["maCP"]},
+            sort=[("ngay", -1)]
+        )
+
+        # Nếu không có lịch sử giá
+        if latest_price is None:
+            gia_dong_cua_hom_truoc = None
+            change = None
+            changePct = None
+        else:
+            gia_dong_cua_hom_truoc = latest_price.get("giaDongCua", 0)
+            gia_mo_cua = latest_price.get("giaMoCua", 0)
+
+            # Tính chênh lệch
+            change = gia_dong_cua_hom_truoc - gia_mo_cua
+
+            # Phần trăm thay đổi
+            if gia_mo_cua == 0:
+                changePct = 0
+            else:
+                changePct = (change / gia_mo_cua) * 100
+
+        # Trả về object có thêm dữ liệu
+        result.append({
+            **cp,   # toàn bộ thông tin trong co_phieu
+            "giaDongCuaHomTruoc": gia_dong_cua_hom_truoc,
+            "chenhLechGia": change,
+            "chenhLechPhanTram": changePct
+        })
+
     return result
+
 
 # ============================================
 # 2. Lịch sử giá dạng candlestick cho 1 mã CP
