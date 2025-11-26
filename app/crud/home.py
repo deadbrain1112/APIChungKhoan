@@ -33,28 +33,44 @@ async def compute_nav(maNDT: str) -> float:
 async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
     result = []
 
-    # --- lấy danh sách sở hữu ---
     async for s in db.so_huu.find({"maNDT": maNDT}):
         maCP = s["maCP"]
 
-        # lấy thông tin cổ phiếu
         cp = await db.co_phieu.find_one({"maCP": maCP})
         if not cp:
             continue
 
-        # lấy lịch sử mới nhất
         lich_su = await db.lich_su_gia.find_one(
             {"maCP": maCP},
             sort=[("ngay", -1)]
         )
 
-        # ======= XỬ LÝ LỊCH SỬ GIÁ ========
+        # ========================
+        # TẠO MODEL LỊCH SỬ GIÁ
+        # ========================
         if lich_su:
-            # Nếu có lịch sử: chuyển thành model lich_su_gia
+            # Có lịch sử
+            giaMo = lich_su.get("giaMoCua", 0)
+            giaDong = lich_su.get("giaDongCua", 0)
+            giaTC = cp.get("giaThamChieu", 0)
+
+            # Nếu giaDongCua = 0 → dùng giá tham chiếu
+            if giaDong == 0:
+                giaDong = giaTC
+                lich_su["giaDongCua"] = giaDong
+
+            # Tính % thay đổi
+            changePct = (
+                ((giaDong - giaMo) / giaMo) * 100
+                if giaMo != 0 else 0
+            )
+
+            lich_su["changePct"] = changePct
+
             lich_su_model = lich_su_gia(**lich_su)
 
         else:
-            # Nếu không có lịch sử → tạo lịch sử ảo từ giá tham chiếu
+            # KHÔNG có lịch sử → dùng giá tham chiếu
             giaTC = cp.get("giaThamChieu", 0)
 
             lich_su_model = lich_su_gia(
@@ -65,9 +81,12 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
                 giaCaoNhat=giaTC,
                 giaThapNhat=giaTC,
                 khoiLuong=0,
+                changePct=0
             )
 
-        # ======= GẮN VÀO MODEL so_huu ========
+        # ========================
+        # TẠO MODEL so_huu
+        # ========================
         so_huu_model = so_huu(
             maCP=maCP,
             soLuong=s.get("soLuong", 0),
@@ -77,11 +96,10 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
                 giaThamChieu=cp.get("giaThamChieu", 0),
                 giaTran=cp.get("giaTran", 0),
                 giaSan=cp.get("giaSan", 0),
-                giaDongCua=lich_su_model.giaDongCua  # dùng giá đóng cửa từ lịch sử / tham chiếu
+                giaDongCua=lich_su_model.giaDongCua
             )
         )
 
-        # ======= GOM LẠI WATCHLIST ITEM ========
         result.append(
             WatchlistItem(
                 soHuu=so_huu_model,
@@ -94,98 +112,92 @@ async def get_watchlist(maNDT: str) -> List[WatchlistItem]:
 
 
 
+
+# Lấy top movers
 # Lấy top movers
 async def get_top_movers(mode: str) -> List[lich_su_gia]:
     data = []
 
+    # COMMON PIPELINE PART: join co_phieu để lấy giaThamChieu
+    base_lookup = [
+        {
+            "$lookup": {
+                "from": "co_phieu",
+                "localField": "maCP",
+                "foreignField": "maCP",
+                "as": "cp"
+            }
+        },
+        {"$unwind": "$cp"},
+        {
+            "$addFields": {
+                "giaDongHoacThamChieu": {
+                    "$cond": [
+                        {"$gt": ["$giaDongCua", 0]},
+                        "$giaDongCua",
+                        "$cp.giaThamChieu"
+                    ]
+                }
+            }
+        }
+    ]
+
+    # COMMON changePct
+    changePct_field = {
+        "$cond": [
+            {"$eq": ["$giaMoCua", 0]},
+            0,
+            {
+                "$multiply": [
+                    {
+                        "$divide": [
+                            {"$subtract": ["$giaDongHoacThamChieu", "$giaMoCua"]},
+                            "$giaMoCua"
+                        ]
+                    },
+                    100
+                ]
+            }
+        ]
+    }
+
+    # ---------- MODE = VOLUME ----------
     if mode == "volume":
-        # Thêm changePct vào luôn
-        pipeline = [
+        pipeline = base_lookup + [
             {
                 "$project": {
                     "maCP": 1, "ngay": 1, "giaDongCua": 1, "giaMoCua": 1,
                     "giaCaoNhat": 1, "giaThapNhat": 1, "khoiLuong": 1,
-                    "changePct": {
-                        "$cond": [
-                            {"$eq": ["$giaMoCua", 0]},
-                            0,
-                            {
-                                "$multiply": [
-                                    {
-                                        "$divide": [
-                                            {"$subtract": ["$giaDongCua", "$giaMoCua"]},
-                                            "$giaMoCua"
-                                        ]
-                                    },
-                                    100
-                                ]
-                            }
-                        ]
-                    }
+                    "changePct": changePct_field
                 }
             },
             {"$sort": {"khoiLuong": -1}},
             {"$limit": 5}
         ]
-        cursor = db.lich_su_gia.aggregate(pipeline)
-        data = [d async for d in cursor]
 
+    # ---------- MODE = VALUE ----------
     elif mode == "value":
-        # Thêm changePct + tránh chia 0
-        pipeline = [
+        pipeline = base_lookup + [
             {
                 "$project": {
                     "maCP": 1, "ngay": 1, "giaDongCua": 1, "giaMoCua": 1,
                     "giaCaoNhat": 1, "giaThapNhat": 1, "khoiLuong": 1,
-                    "value": {"$multiply": ["$giaDongCua", "$khoiLuong"]},
-                    "changePct": {
-                        "$cond": [
-                            {"$eq": ["$giaMoCua", 0]},
-                            0,
-                            {
-                                "$multiply": [
-                                    {
-                                        "$divide": [
-                                            {"$subtract": ["$giaDongCua", "$giaMoCua"]},
-                                            "$giaMoCua"
-                                        ]
-                                    },
-                                    100
-                                ]
-                            }
-                        ]
-                    }
+                    "value": {"$multiply": ["$giaDongHoacThamChieu", "$khoiLuong"]},
+                    "changePct": changePct_field
                 }
             },
             {"$sort": {"value": -1}},
             {"$limit": 5}
         ]
-        cursor = db.lich_su_gia.aggregate(pipeline)
-        data = [d async for d in cursor]
 
+    # ---------- MODE = GAINERS / LOSERS ----------
     elif mode in ["gainers", "losers"]:
-        pipeline = [
+        pipeline = base_lookup + [
             {
                 "$project": {
                     "maCP": 1, "ngay": 1, "giaDongCua": 1, "giaMoCua": 1,
                     "giaCaoNhat": 1, "giaThapNhat": 1, "khoiLuong": 1,
-                    "changePct": {
-                        "$cond": [
-                            {"$eq": ["$giaMoCua", 0]},
-                            0,
-                            {
-                                "$multiply": [
-                                    {
-                                        "$divide": [
-                                            {"$subtract": ["$giaDongCua", "$giaMoCua"]},
-                                            "$giaMoCua"
-                                        ]
-                                    },
-                                    100
-                                ]
-                            }
-                        ]
-                    }
+                    "changePct": changePct_field
                 }
             }
         ]
@@ -196,8 +208,11 @@ async def get_top_movers(mode: str) -> List[lich_su_gia]:
             pipeline.append({"$sort": {"changePct": 1}})
 
         pipeline.append({"$limit": 5})
-        cursor = db.lich_su_gia.aggregate(pipeline)
-        data = [d async for d in cursor]
+
+    # ---------- RUN QUERY ----------
+    cursor = db.lich_su_gia.aggregate(pipeline)
+    data = [d async for d in cursor]
 
     return [lich_su_gia(**d) for d in data]
+
 
