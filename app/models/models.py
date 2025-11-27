@@ -146,7 +146,7 @@ class GiaoDich(BaseModel):
     ngayGD: datetime
 
 class LenhDat(BaseModel):
-    _id: Optional[str] = None
+    _id: Optional[str]
     maNDT: str
     maCP: str
     loaiGD: str

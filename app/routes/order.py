@@ -51,8 +51,19 @@ async def get_all_orders(maNDT: str):
 
     orders = []
     async for o in cursor:
-        clean = to_string_id(o)
+        clean = {
+            "_id": str(o["_id"]),     # ✔ Lấy _id
+            "maNDT": o["maNDT"],
+            "maCP": o["maCP"],
+            "loaiGD": o["loaiGD"],
+            "loaiLenh": o["loaiLenh"],
+            "gia": o["gia"],
+            "soLuong": o["soLuong"],
+            "trangThai": o["trangThai"],
+            "ngayGD": o["ngayGD"],
+        }
         orders.append(LenhDat(**clean))
+
     return orders
 
 # ========== 4️⃣ Hủy lệnh ==========
