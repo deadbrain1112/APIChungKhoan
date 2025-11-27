@@ -146,7 +146,7 @@ class GiaoDich(BaseModel):
     ngayGD: datetime
 
 class LenhDat(BaseModel):
-    id: Optional[str] = None  # thêm dòng này
+    _id: Optional[str] = None
     maNDT: str
     maCP: str
     loaiGD: str
