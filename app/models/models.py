@@ -146,11 +146,11 @@ class GiaoDich(BaseModel):
     ngayGD: datetime
 
 class LenhDat(BaseModel):
-    id: Optional[str]           # map từ _id Mongo
+    id: Optional[str] = None  # thêm dòng này
     maNDT: str
     maCP: str
-    loaiGD: str                 # M / B
-    loaiLenh: str               # LO / ATO / ATC
+    loaiGD: str
+    loaiLenh: str
     gia: float
     soLuong: int
     trangThai: str
