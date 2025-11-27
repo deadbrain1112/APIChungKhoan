@@ -146,7 +146,7 @@ class GiaoDich(BaseModel):
     ngayGD: datetime
 
 class LenhDat(BaseModel):
-    _id: Optional[str]
+    id: Optional[str] = Field(default=None, alias="_id")
     maNDT: str
     maCP: str
     loaiGD: str
@@ -155,3 +155,6 @@ class LenhDat(BaseModel):
     soLuong: int
     trangThai: str
     ngayGD: datetime
+
+    class Config:
+        populate_by_name = True
