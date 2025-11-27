@@ -2,13 +2,20 @@ from fastapi import APIRouter, HTTPException
 from bson import ObjectId
 from datetime import datetime
 from app.configs.database import db
-from app.models.models import OrderModel, OrderResponse, co_phieu
+from app.models.models import OrderModel, OrderResponse, co_phieu, LenhDat
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 
 # ---------- Utility chuyển ObjectId sang str ----------
 def serialize_doc(doc: dict) -> dict:
-    doc["_id"] = str(doc["_id"])
+    doc = dict(doc)  # copy
+    if "_id" in doc and isinstance(doc["_id"], ObjectId):
+        doc["_id"] = str(doc["_id"])
+    if "ngayGD" in doc:
+        if isinstance(doc["ngayGD"], dict) and "$date" in doc["ngayGD"]:
+            doc["ngayGD"] = datetime.fromisoformat(doc["ngayGD"]["$date"].replace("Z", "+00:00"))
+        elif isinstance(doc["ngayGD"], str):
+            doc["ngayGD"] = datetime.fromisoformat(doc["ngayGD"])
     return doc
 
 # ========== 1️⃣ Đặt lệnh MUA ==========
@@ -39,17 +46,19 @@ async def place_sell_order(order: OrderModel):
     return serialize_doc(saved_order)
 
 # ========== 3️⃣ Lấy danh sách lệnh của 1 nhà đầu tư ==========
-@router.get("/all/{maNDT}", response_model=list[OrderResponse])
+@router.get("/all/{maNDT}", response_model=list[LenhDat])
 async def get_all_orders(maNDT: str):
-    # Lọc lệnh theo maNDT và trạng thái
-    cursor = db.lenh_dat.find({
-        "maNDT": maNDT,
-        "trangThai": {"$in": ["Chờ khớp", "Khớp một phần"]}
-    })
+    cursor = db.lenh_dat.find(
+        {
+            "maNDT": maNDT,
+            "trangThai": {"$in": ["Chờ khớp", "Khớp một phần"]}
+        }
+    ).sort("ngayGD", -1)
 
     orders = []
     async for o in cursor:
-        orders.append(serialize_doc(o))
+        clean = serialize_doc(o)
+        orders.append(LenhDat(**clean))
     return orders
 
 # ========== 4️⃣ Hủy lệnh ==========

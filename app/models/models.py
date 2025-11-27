@@ -144,3 +144,14 @@ class GiaoDich(BaseModel):
     soTien: Optional[float] = None
     trangThai: str
     ngayGD: datetime
+
+class LenhDat(BaseModel):
+    id: Optional[str]           # map từ _id Mongo
+    maNDT: str
+    maCP: str
+    loaiGD: str                 # M / B
+    loaiLenh: str               # LO / ATO / ATC
+    gia: float
+    soLuong: int
+    trangThai: str
+    ngayGD: datetime
