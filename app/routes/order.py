@@ -7,15 +7,9 @@ from app.models.models import OrderModel, OrderResponse, co_phieu, LenhDat
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 
 # ---------- Utility chuyển ObjectId sang str ----------
-def serialize_doc(doc: dict) -> dict:
-    doc = dict(doc)  # copy
-    if "_id" in doc and isinstance(doc["_id"], ObjectId):
+def to_string_id(doc):
+    if "_id" in doc:
         doc["_id"] = str(doc["_id"])
-    if "ngayGD" in doc:
-        if isinstance(doc["ngayGD"], dict) and "$date" in doc["ngayGD"]:
-            doc["ngayGD"] = datetime.fromisoformat(doc["ngayGD"]["$date"].replace("Z", "+00:00"))
-        elif isinstance(doc["ngayGD"], str):
-            doc["ngayGD"] = datetime.fromisoformat(doc["ngayGD"])
     return doc
 
 # ========== 1️⃣ Đặt lệnh MUA ==========
@@ -27,7 +21,7 @@ async def place_buy_order(order: OrderModel):
 
     result = await db.lenh_dat.insert_one(order.dict())
     saved_order = await db.lenh_dat.find_one({"_id": result.inserted_id})
-    return serialize_doc(saved_order)
+    return to_string_id(saved_order)
 
 # ========== 2️⃣ Đặt lệnh BÁN ==========
 @router.post("/sell", response_model=OrderResponse)
@@ -43,7 +37,7 @@ async def place_sell_order(order: OrderModel):
 
     result = await db.lenh_dat.insert_one(order.dict())
     saved_order = await db.lenh_dat.find_one({"_id": result.inserted_id})
-    return serialize_doc(saved_order)
+    return to_string_id(saved_order)
 
 # ========== 3️⃣ Lấy danh sách lệnh của 1 nhà đầu tư ==========
 @router.get("/all/{maNDT}", response_model=list[LenhDat])
@@ -57,7 +51,7 @@ async def get_all_orders(maNDT: str):
 
     orders = []
     async for o in cursor:
-        clean = serialize_doc(o)
+        clean = to_string_id(o)
         orders.append(LenhDat(**clean))
     return orders
 
@@ -75,7 +69,7 @@ async def get_stock_info(maCP: str):
     cp = await db.co_phieu.find_one({"maCP": maCP.upper()})
     if not cp:
         raise HTTPException(status_code=404, detail="Không tìm thấy mã cổ phiếu")
-    return serialize_doc(cp)
+    return to_string_id(cp)
 
 # ========== 6️⃣ Danh sách cổ phiếu sở hữu ==========
 @router.get("/owned/{maNDT}")
@@ -83,5 +77,5 @@ async def get_owned_stocks(maNDT: str):
     cursor = db.so_huu.find({"maNDT": maNDT})
     result = []
     async for item in cursor:
-        result.append(serialize_doc(item))
+        result.append(to_string_id(item))
     return result
