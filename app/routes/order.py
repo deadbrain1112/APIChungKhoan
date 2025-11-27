@@ -25,7 +25,7 @@ async def place_buy_order(order: OrderModel):
 # ========== 2️⃣ Đặt lệnh BÁN ==========
 @router.post("/sell", response_model=OrderResponse)
 async def place_sell_order(order: OrderModel):
-    order.loaiGD = "B"  # Bán
+    order.loaiGD = "B"
     order.trangThai = "Chờ khớp"
     order.ngayGD = datetime.now()
 
@@ -41,7 +41,12 @@ async def place_sell_order(order: OrderModel):
 # ========== 3️⃣ Lấy danh sách lệnh của 1 nhà đầu tư ==========
 @router.get("/all/{maNDT}", response_model=list[OrderResponse])
 async def get_all_orders(maNDT: str):
-    cursor = db.lenh_dat.find({"maNDT": maNDT})
+    # Lọc lệnh theo maNDT và trạng thái
+    cursor = db.lenh_dat.find({
+        "maNDT": maNDT,
+        "trangThai": {"$in": ["Chờ khớp", "Khớp một phần"]}
+    })
+
     orders = []
     async for o in cursor:
         orders.append(serialize_doc(o))
