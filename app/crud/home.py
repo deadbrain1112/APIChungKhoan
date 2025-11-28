@@ -23,9 +23,8 @@ async def compute_nav(maNDT: str) -> float:
 
     ndt = await db.nha_dau_tu.find_one({"_id": ndt_id})
     cash = ndt.get("cash", 0)
-    debt = ndt.get("debt", 0)
 
-    nav = total_value + cash - debt
+    nav = total_value + cash
     return nav
 
 
