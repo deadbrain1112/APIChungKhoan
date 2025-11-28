@@ -20,5 +20,5 @@ async def get_portfolio(maNDT: str):
         nav=nav,
         pnlToday=pnlToday,
         pnlPct=pnlPct,
-        cash=ndt.get("tien_kha_dung", 0)
+        cash=ndt.get("cash", 0)
     )
