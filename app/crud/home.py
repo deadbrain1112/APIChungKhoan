@@ -10,18 +10,25 @@ async def get_so_huu(maNDT: str):
     return [so_huu(**doc) async for doc in cursor]
 # Tính NAV
 async def compute_nav(maNDT: str) -> float:
-    ndt_id = ObjectId(maNDT)
-    # Lấy tất cả cổ phiếu sở hữu
-    holdings = db.so_huu.find({"maNDT": ndt_id})
+    # maNDT là string, không convert
+    holdings = db.so_huu.find({"maNDT": maNDT})
+
     total_value = 0
+
     async for h in holdings:
         maCP = h["maCP"]
         qty = h["soLuong"]
-        lich_su = await db.lich_su_gia.find_one({"maCP": maCP}, sort=[("ngay", -1)])
+
+        lich_su = await db.lich_su_gia.find_one(
+            {"maCP": maCP},
+            sort=[("ngay", -1)]
+        )
+
         gia_dong_cua = lich_su["giaDongCua"] if lich_su else 0
         total_value += qty * gia_dong_cua
 
-    ndt = await db.nha_dau_tu.find_one({"_id": ndt_id})
+    # nhà đầu tư trong collection khác, dùng ObjectId
+    ndt = await db.nha_dau_tu.find_one({"_id": ObjectId(maNDT)})
     cash = ndt.get("cash", 0)
 
     nav = total_value + cash
