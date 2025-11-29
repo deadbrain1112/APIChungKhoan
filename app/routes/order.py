@@ -41,10 +41,11 @@ async def place_sell_order(order: OrderModel):
 
 # ========== 3️⃣ Lấy danh sách lệnh của 1 nhà đầu tư ==========
 @router.get("/all/{maNDT}", response_model=list[LenhDat])
-async def get_all_orders(maNDT: str):
+async def get_all_orders(maNDT: str, loaiGD: str):
     cursor = db.lenh_dat.find(
         {
             "maNDT": maNDT,
+            "loaiGD": loaiGD,
             "trangThai": {"$in": ["Chờ khớp", "Khớp một phần"]}
         }
     ).sort("ngayGD", -1)
@@ -52,7 +53,7 @@ async def get_all_orders(maNDT: str):
     orders = []
     async for o in cursor:
         clean = {
-            "_id": str(o["_id"]),     # ✔ Lấy _id
+            "_id": str(o["_id"]),
             "maNDT": o["maNDT"],
             "maCP": o["maCP"],
             "loaiGD": o["loaiGD"],
