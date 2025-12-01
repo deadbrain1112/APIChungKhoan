@@ -78,9 +78,32 @@ async def cancel_order(order_id: str):
 # ========== 5️⃣ Lấy thông tin cổ phiếu theo mã ==========
 @router.get("/stock/{maCP}", response_model=co_phieu)
 async def get_stock_info(maCP: str):
-    cp = await db.co_phieu.find_one({"maCP": maCP.upper()})
+    maCP = maCP.upper()
+
+    # --- Lấy thông tin cổ phiếu ---
+    cp = await db.co_phieu.find_one({"maCP": maCP})
     if not cp:
         raise HTTPException(status_code=404, detail="Không tìm thấy mã cổ phiếu")
+
+    # --- Lấy lịch sử giá mới nhất ---
+    latest = await db.lich_su_gia.find_one(
+        {"maCP": maCP},
+        sort=[("ngay", -1)]   # Sắp xếp giảm dần theo ngày
+    )
+
+    if not latest:
+        raise HTTPException(status_code=404, detail="Không có lịch sử giá cho mã này")
+
+    # --- Tính giá tham chiếu, trần, sàn ---
+    gia_tham_chieu = float(latest.get("giaDongCua", 0))
+    gia_tran = round(gia_tham_chieu * 1.1, 2)
+    gia_san = round(gia_tham_chieu * 0.9, 2)
+
+    # --- Thêm vào response ---
+    cp["giaThamChieu"] = gia_tham_chieu
+    cp["giaTran"] = gia_tran
+    cp["giaSan"] = gia_san
+
     return to_string_id(cp)
 
 # ========== 6️⃣ Danh sách cổ phiếu sở hữu ==========
