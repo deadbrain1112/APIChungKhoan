@@ -1,6 +1,8 @@
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from app.configs.database import db
-from app.models.models import co_phieu, lich_su_gia
+from app.models.models import co_phieu, lich_su_gia, so_huu
 from fastapi import Query
 
 router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
@@ -91,4 +93,24 @@ async def search_stock(keyword: str):
     result = []
     async for doc in cursor:
         result.append(co_phieu(**doc))
+    return result
+
+# ==============================
+# 4. Lấy danh sách cổ phiếu sở hữu của NDT
+# ==============================
+@router.get("/owned/{maNDT}", response_model=list[so_huu])
+async def get_owned_stocks(maNDT: str = Path(..., description="Mã nhà đầu tư")):
+
+    cursor = db["so_huu"].find({"maNDT": maNDT})
+    result = []
+
+    async for doc in cursor:
+
+        doc["_id"] = str(doc["_id"])
+        result.append(so_huu(**doc))
+
+    if not result:
+
+        return []
+
     return result
