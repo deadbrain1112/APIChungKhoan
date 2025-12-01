@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from bson import ObjectId
 from datetime import datetime
 from app.configs.database import db
-from app.models.models import OrderModel, OrderResponse, co_phieu, LenhDat
+from app.models.models import OrderModel, OrderResponse, co_phieu, LenhDat, so_huu
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 
@@ -84,10 +84,10 @@ async def get_stock_info(maCP: str):
     return to_string_id(cp)
 
 # ========== 6️⃣ Danh sách cổ phiếu sở hữu ==========
-@router.get("/owned/{maNDT}")
-async def get_owned_stocks(maNDT: str):
-    cursor = db.so_huu.find({"maNDT": maNDT})
-    result = []
-    async for item in cursor:
-        result.append(to_string_id(item))
-    return result
+@router.get("/owned/{maNDT}/{maCP}", response_model=so_huu)
+async def get_owned_stock(maNDT: str, maCP: str):
+    doc = await db.so_huu.find_one({"maNDT": maNDT, "maCP": maCP})
+    if not doc:
+        return {"maNDT": maNDT, "maCP": maCP, "soLuong": 0}
+    doc["_id"] = str(doc["_id"])
+    return doc
