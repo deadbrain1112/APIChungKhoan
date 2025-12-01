@@ -20,7 +20,6 @@ class co_phieu(BaseModel):
     giaThamChieu: Optional[float] = 0
     giaTran: Optional[float] = 0
     giaSan: Optional[float] = 0
-    giaDongCua: Optional[float] = 0
 
 
 # ---------- LỊCH SỬ GIÁ ----------
