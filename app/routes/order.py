@@ -107,10 +107,13 @@ async def get_stock_info(maCP: str):
     return to_string_id(cp)
 
 # ========== 6️⃣ Danh sách cổ phiếu sở hữu ==========
-@router.get("/owned/{maNDT}/{maCP}", response_model=so_huu)
-async def get_owned_stock(maNDT: str, maCP: str):
-    doc = await db.so_huu.find_one({"maNDT": maNDT, "maCP": maCP})
-    if not doc:
-        return {"maNDT": maNDT, "maCP": maCP, "soLuong": 0}
-    doc["_id"] = str(doc["_id"])
-    return doc
+@router.get("/owned/{maNDT}", response_model=list[dict])
+async def get_owned_stocks(maNDT: str):
+    cursor = db["so_huu"].find({"maNDT": maNDT})
+    result = []
+
+    async for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        result.append(doc)
+
+    return result
