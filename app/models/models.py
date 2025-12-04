@@ -134,15 +134,17 @@ class StockOwned(BaseModel):
 class GiaoDich(BaseModel):
     _id: Optional[str]
     maNDT: str
-    kieu: str               # cp, nap, rut
+    kieu: str
     maCP: Optional[str] = None
-    loaiGD: Optional[str] = None
-    loaiLenh: Optional[str] = None
     gia: Optional[float] = None
     soLuong: Optional[int] = None
-    soTien: Optional[float] = None
+    soTien: float
+    soTienTruoc: float
+    soTienSau: float
     trangThai: str
     ngayGD: datetime
+    moTa: Optional[str] = ""
+
 
 class LenhDat(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")
