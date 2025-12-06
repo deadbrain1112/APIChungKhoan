@@ -41,7 +41,7 @@ async def register_account(ndt: nha_dau_tu, password: str):
     data = ndt.dict()
     data["password"] = password
     data["faceEmbeddings"] = ndt.faceEmbeddings or ""
-    data["ngay_tao"] = datetime.now().isoformat()  # <── THỜI ĐIỂM HIỆN TẠI
+    data["ngay_tao"] = datetime.now().isoformat()
 
     # Lưu vào DB (Mongo tự tạo _id)
     result = await db.nha_dau_tu.insert_one(data)
