@@ -22,6 +22,9 @@ async def login(data: LoginRequest):
 router = APIRouter()
 
 
+from datetime import datetime
+
+
 @router.post("/register")
 async def register_account(ndt: nha_dau_tu, password: str):
     # Kiểm tra email trùng
