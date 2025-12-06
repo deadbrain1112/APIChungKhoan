@@ -18,15 +18,11 @@ async def login(data: LoginRequest):
         ten=ndt.get("ten", ""),
         email=ndt.get("email", "")
     )
-from fastapi import APIRouter, HTTPException
-from app.configs.database import db
-from app.models.nhadau_tu import NhaDauTu
-from bson import ObjectId
 
 router = APIRouter()
 
 @router.post("/register")
-async def register_account(ndt: NhaDauTu, password: str):
+async def register_account(ndt: nha_dau_tu, password: str):
     # Kiểm tra email trùng
     existed = await db.nha_dau_tu.find_one({"email": ndt.email})
     if existed:
