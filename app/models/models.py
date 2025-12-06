@@ -169,3 +169,7 @@ class nha_dau_tu(BaseModel):
     diaChi: str
     taikhoan: str
     faceEmbeddings: Optional[str] = None
+
+class RegisterRequest(BaseModel):
+    ndt: nha_dau_tu
+    password: str
