@@ -168,5 +168,4 @@ class nha_dau_tu(BaseModel):
     email: str
     diaChi: str
     taikhoan: str
-    ngay_tao: str
     faceEmbeddings: Optional[str] = None

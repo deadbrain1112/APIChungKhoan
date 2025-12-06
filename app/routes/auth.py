@@ -21,6 +21,7 @@ async def login(data: LoginRequest):
 
 router = APIRouter()
 
+
 @router.post("/register")
 async def register_account(ndt: nha_dau_tu, password: str):
     # Kiểm tra email trùng
@@ -35,8 +36,9 @@ async def register_account(ndt: nha_dau_tu, password: str):
 
     # Tạo document
     data = ndt.dict()
-    data["password"] = password            # không mã hóa
-    data["faceEmbeddings"] = ndt.faceEmbeddings or ""  # mặc định chuỗi rỗng
+    data["password"] = password
+    data["faceEmbeddings"] = ndt.faceEmbeddings or ""
+    data["ngay_tao"] = datetime.now().isoformat()  # <── THỜI ĐIỂM HIỆN TẠI
 
     # Lưu vào DB (Mongo tự tạo _id)
     result = await db.nha_dau_tu.insert_one(data)
@@ -45,3 +47,4 @@ async def register_account(ndt: nha_dau_tu, password: str):
         "message": "Đăng ký thành công",
         "id": str(result.inserted_id)
     }
+
