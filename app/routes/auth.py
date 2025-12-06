@@ -24,3 +24,23 @@ async def register_account(data: RegisterRequest):
     ndt = data.ndt
     password = data.password
 
+    # Kiểm tra email
+    existed_email = await db.nha_dau_tu.find_one({"email": ndt.email})
+    if existed_email:
+        raise HTTPException(status_code=400, detail="Email đã tồn tại")
+
+    # Kiểm tra tài khoản
+    existed_tk = await db.nha_dau_tu.find_one({"taikhoan": ndt.taikhoan})
+    if existed_tk:
+        raise HTTPException(status_code=400, detail="Tài khoản đã tồn tại")
+
+    # Chuẩn bị dữ liệu để lưu
+    ndt_dict = ndt.dict(exclude_none=True)
+    ndt_dict["password"] = password  # Nếu bạn lưu password vào DB
+
+    # Lưu vào MongoDB
+    result = await db.nha_dau_tu.insert_one(ndt_dict)
+
+    return {"message": "Đăng ký thành công", "id": str(result.inserted_id)}
+
+
