@@ -162,8 +162,6 @@ class LenhDat(BaseModel):
 
 
 class nha_dau_tu(BaseModel):
-    _id: Optional[str]
-    maNDT: str
     hoTen: str
     cmnd: str
     sdt: str
