@@ -176,4 +176,4 @@ class nha_dau_tu(BaseModel):
 
 class RegisterRequest(BaseModel):
     ndt: nha_dau_tu
-    password: str
+    matkhau: str
