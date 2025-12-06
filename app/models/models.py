@@ -170,6 +170,10 @@ class nha_dau_tu(BaseModel):
     taikhoan: str
     faceEmbeddings: Optional[str] = None
 
+    class Config:
+        extra = "ignore"   # BỎ QUA field thừa
+
+
 class RegisterRequest(BaseModel):
     ndt: nha_dau_tu
     password: str
