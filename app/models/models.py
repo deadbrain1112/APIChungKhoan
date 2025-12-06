@@ -162,7 +162,7 @@ class LenhDat(BaseModel):
 
 
 class nha_dau_tu(BaseModel):
-    id: str
+    _id: Optional[str]
     maNDT: str
     hoTen: str
     cmnd: str
