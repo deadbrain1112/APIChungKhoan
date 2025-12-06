@@ -19,12 +19,6 @@ async def login(data: LoginRequest):
         email=ndt.get("email", "")
     )
 
-router = APIRouter()
-
-
-from datetime import datetime
-
-
 @router.post("/register")
 async def register_account(ndt: nha_dau_tu, password: str):
     # Kiểm tra email trùng
