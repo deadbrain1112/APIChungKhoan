@@ -159,3 +159,16 @@ class LenhDat(BaseModel):
 
     class Config:
         populate_by_name = True
+
+
+class nha_dau_tu(BaseModel):
+    id: str
+    maNDT: str
+    hoTen: str
+    cmnd: str
+    sdt: str
+    email: str
+    diaChi: str
+    taikhoan: str
+    ngay_tao: str
+    faceEmbeddings: Optional[str] = None

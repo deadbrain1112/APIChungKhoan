@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from app.configs.database import db
-from app.models.models import LoginRequest, LoginResponse
+from app.models.models import LoginRequest, LoginResponse, nha_dau_tu
 
 router = APIRouter()
 
@@ -18,3 +18,23 @@ async def login(data: LoginRequest):
         ten=ndt.get("ten", ""),
         email=ndt.get("email", "")
     )
+@router.post("/register")
+async def register_account(ndt: nha_dau_tu, password: str):
+    # Kiểm tra email trùng
+    existed = db.nha_dau_tu.find_one({"email": ndt.email})
+    if existed:
+        raise HTTPException(status_code=400, detail="Email đã được sử dụng")
+
+    # Kiểm tra tài khoản trùng
+    existed = db.nha_dau_tu.find_one({"taikhoan": ndt.taikhoan})
+    if existed:
+        raise HTTPException(status_code=400, detail="Tài khoản đã tồn tại")
+
+    # KHÔNG mã hoá mật khẩu
+    data = ndt.dict()
+    data["password"] = password
+
+    # Lưu vào MongoDB
+    db.nha_dau_tu.insert_one(data)
+
+    return {"message": "Đăng ký thành công", "maNDT": ndt.maNDT}

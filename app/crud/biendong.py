@@ -8,7 +8,7 @@ async def get_transactions(maNDT: str, kieu: str) -> List[GiaoDich]:
     query = {"maNDT": maNDT}
 
     if kieu != "all":
-        query["kieu"] = kieu  # nap | rut | mua | ban | phi | lai | co_tuc
+        query["kieu"] = kieu
 
     cursor = db.giao_dich.find(query).sort("ngayGD", -1)
     return [GiaoDich(**t) async for t in cursor]
@@ -49,7 +49,7 @@ async def compute_balance(maNDT: str):
     now = datetime.now()
 
     for t in data:
-        balance = t.soTienSau  # đã có từ backend → dùng luôn
+        balance = t.soTienSau
 
         # Tính trong tháng
         if t.ngayGD.month == now.month and t.ngayGD.year == now.year:
