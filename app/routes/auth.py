@@ -22,7 +22,7 @@ async def login(data: LoginRequest):
 @router.post("/register")
 async def register_account(data: RegisterRequest):
     ndt = data.ndt
-    matkhau = data.password
+    matkhau = data.matkhau
 
     # Kiểm tra email
     existed_email = await db.nha_dau_tu.find_one({"email": ndt.email})
@@ -36,7 +36,7 @@ async def register_account(data: RegisterRequest):
 
     # Chuẩn bị dữ liệu để lưu
     ndt_dict = ndt.dict(exclude_none=True)
-    ndt_dict["matkhau"] = matkhau # Nếu bạn lưu password vào DB
+    ndt_dict["matkhau"] = matkhau
 
     # Lưu vào MongoDB
     result = await db.nha_dau_tu.insert_one(ndt_dict)
