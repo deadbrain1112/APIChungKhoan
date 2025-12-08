@@ -83,7 +83,7 @@ async def reset_password_otp(data: ResetPasswordOTP):
     # 4. Cập nhật mật khẩu KHÔNG hash
     update_result = await db.nha_dau_tu.update_one(
         {"email": email},
-        {"$set": {"password": new_password}}
+        {"$set": {"matkhau": new_password}}
     )
 
     if update_result.modified_count == 0:
