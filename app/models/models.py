@@ -178,21 +178,6 @@ class RegisterRequest(BaseModel):
     ndt: nha_dau_tu
     matkhau: str
 
-# ---------- 1. Gửi OTP ----------
-class ForgotPasswordRequest(BaseModel):
-    email: str
-
-
-# ---------- 2. Xác minh OTP ----------
-class VerifyOtpRequest(BaseModel):
-    email: str
-    otp: str
-
-
-# ---------- 3. Đặt lại mật khẩu ----------
-class ResetPasswordRequest(BaseModel):
-    token: str
-    newPassword: str
 
 
 # ---------- (OPTIONAL) Lưu OTP trong MongoDB ----------
@@ -200,3 +185,8 @@ class PasswordResetRecord(BaseModel):
     email: str
     otp: str
     expiresAt: datetime
+
+class ResetPasswordOTP(BaseModel):
+    email: str
+    otp: str
+    newPassword: str

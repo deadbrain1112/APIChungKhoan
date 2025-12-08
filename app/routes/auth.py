@@ -1,10 +1,9 @@
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException
 from app.configs.database import db
-from app.models.models import LoginRequest, LoginResponse, nha_dau_tu, RegisterRequest, ResetPasswordRequest, \
-    VerifyOtpRequest, ForgotPasswordRequest, PasswordResetRecord
+from app.models.models import LoginRequest, LoginResponse, RegisterRequest, ResetPasswordOTP
 
 router = APIRouter()
 
@@ -60,3 +59,37 @@ async def save_otp(data: dict):
     )
 
     return {"message": "OTP saved"}
+@router.post("/reset-password")
+async def reset_password_otp(data: ResetPasswordOTP):
+    email = data.email.strip()
+    otp = data.otp.strip()
+    new_password = data.newPassword.strip()
+
+    # 1. Lấy OTP theo email
+    otp_doc = await db.password_reset.find_one({"email": email})
+
+    if otp_doc is None:
+        raise HTTPException(status_code=400, detail="Không tìm thấy yêu cầu đặt lại mật khẩu")
+
+    # 2. Kiểm tra OTP
+    if otp != otp_doc["otp"]:
+        raise HTTPException(status_code=400, detail="OTP không chính xác")
+
+    # 3. Kiểm tra hết hạn
+    expired_at = otp_doc["expired_at"]
+    if datetime.now(timezone.utc) > expired_at:
+        raise HTTPException(status_code=400, detail="OTP đã hết hạn")
+
+    # 4. Cập nhật mật khẩu KHÔNG hash
+    update_result = await db.nha_dau_tu.update_one(
+        {"email": email},
+        {"$set": {"password": new_password}}
+    )
+
+    if update_result.modified_count == 0:
+        raise HTTPException(status_code=500, detail="Không thể cập nhật mật khẩu")
+
+    # 5. Xóa OTP sau khi sử dụng
+    await db.password_reset.delete_one({"email": email})
+
+    return {"message": "Đổi mật khẩu thành công"}
