@@ -48,88 +48,16 @@ async def register_account(data: RegisterRequest):
 
     return {"message": "Đăng ký thành công", "id": str(result.inserted_id)}
 
-@router.post("/forgot-password")
-async def forgot_password(data: ForgotPasswordRequest):
-    email = data.email
+@router.post("/save-otp")
+async def save_otp(data: dict):
+    email = data["email"]
+    otp = data["otp"]
+    expire = datetime.utcnow() + timedelta(minutes=5)
 
-    ndt = await db.nha_dau_tu.find_one({"email": email})
-    if not ndt:
-        raise HTTPException(status_code=404, detail="Email không tồn tại")
-
-    # tạo mã OTP
-    otp = str(random.randint(100000, 999999))
-
-    record = PasswordResetRecord(
-        email=email,
-        otp=otp,
-        expiresAt=datetime.utcnow() + timedelta(minutes=5)
-    )
-
-    # xoá old otp
-    await db.password_reset.delete_many({"email": email})
-
-    # lưu new otp
-    await db.password_reset.insert_one(record.dict())
-
-    subject = "Mã xác nhận đặt lại mật khẩu"
-    content = f"""
-        <h3>Mã OTP của bạn:</h3>
-        <h2>{otp}</h2>
-        <p>Mã OTP có hiệu lực trong 5 phút.</p>
-    """
-
-    success = await send_email(email, subject, content)
-
-    if not success:
-        raise HTTPException(status_code=500, detail="Không gửi được email OTP")
-
-    return {"message": "OTP đã gửi qua email thành công"}
-
-
-# ---------- 2. Xác minh OTP ----------
-@router.post("/verify-otp")
-async def verify_otp(data: VerifyOtpRequest):
-    record = await db.password_reset.find_one({
-        "email": data.email,
-        "otp": data.otp
-    })
-
-    if not record:
-        raise HTTPException(status_code=400, detail="OTP không chính xác")
-
-    if datetime.utcnow() > record["expiresAt"]:
-        raise HTTPException(status_code=400, detail="OTP đã hết hạn")
-
-    # tạo token reset password
-    token = str(random.randint(100000000, 999999999))
-
-    # cập nhật token vào record
-    await db.password_reset.update_one(
-        {"email": data.email},
-        {"$set": {"token": token}}
-    )
-
-    return {"message": "Xác thực thành công", "token": token}
-
-
-@router.post("/reset-password")
-async def reset_password(data: ResetPasswordRequest):
-    record = await db.password_reset.find_one({"token": data.token})
-
-    if not record:
-        raise HTTPException(status_code=400, detail="Token không hợp lệ")
-
-    email = record["email"]
-
-    # update mật khẩu
-    result = await db.nha_dau_tu.update_one(
+    await db.otp_codes.update_one(
         {"email": email},
-        {"$set": {"matkhau": data.newPassword}}
+        {"$set": {"otp": otp, "expired_at": expire}},
+        upsert=True
     )
 
-    if result.modified_count == 0:
-        raise HTTPException(status_code=500, detail="Không thể đặt mật khẩu mới")
-
-    await db.password_reset.delete_many({"email": email})
-
-    return {"message": "Đặt mật khẩu mới thành công"}
+    return {"message": "OTP saved"}
