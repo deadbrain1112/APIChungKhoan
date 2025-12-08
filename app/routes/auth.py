@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
 from app.configs.database import db
-from app.configs.email import send_email
 from app.models.models import LoginRequest, LoginResponse, nha_dau_tu, RegisterRequest, ResetPasswordRequest, \
     VerifyOtpRequest, ForgotPasswordRequest, PasswordResetRecord
 
