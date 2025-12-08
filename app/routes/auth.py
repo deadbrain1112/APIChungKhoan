@@ -66,7 +66,7 @@ async def reset_password_otp(data: ResetPasswordOTP):
     new_password = data.newPassword.strip()
 
     # 1. Lấy OTP theo email
-    otp_doc = await db.password_reset.find_one({"email": email})
+    otp_doc = await db.otp_codes.find_one({"email": email})
 
     if otp_doc is None:
         raise HTTPException(status_code=400, detail="Không tìm thấy yêu cầu đặt lại mật khẩu")
