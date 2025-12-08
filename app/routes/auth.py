@@ -69,27 +69,44 @@ async def reset_password_otp(data: ResetPasswordOTP):
     otp_doc = await db.otp_codes.find_one({"email": email})
 
     if otp_doc is None:
-        raise HTTPException(status_code=400, detail="Không tìm thấy yêu cầu đặt lại mật khẩu")
+        raise HTTPException(
+            status_code=400,
+            detail="Không tìm thấy yêu cầu đặt lại mật khẩu"
+        )
 
     # 2. Kiểm tra OTP
-    if otp != otp_doc["otp"]:
-        raise HTTPException(status_code=400, detail="OTP không chính xác")
+    if otp != otp_doc.get("otp"):
+        raise HTTPException(
+            status_code=400,
+            detail="OTP không chính xác"
+        )
 
-    # 3. Kiểm tra hết hạn
-    expired_at = otp_doc["expired_at"]
+    # 3. Kiểm tra hết hạn OTP
+    expired_at = otp_doc.get("expired_at")
+
+    # 👉 FIX TIMEZONE — nếu datetime từ MongoDB là naive thì convert sang UTC
+    if expired_at.tzinfo is None:
+        expired_at = expired_at.replace(tzinfo=timezone.utc)
+
     if datetime.now(timezone.utc) > expired_at:
-        raise HTTPException(status_code=400, detail="OTP đã hết hạn")
+        raise HTTPException(
+            status_code=400,
+            detail="OTP đã hết hạn"
+        )
 
-    # 4. Cập nhật mật khẩu KHÔNG hash
+    # 4. Cập nhật mật khẩu (KHÔNG hash theo yêu cầu)
     update_result = await db.nha_dau_tu.update_one(
         {"email": email},
         {"$set": {"matkhau": new_password}}
     )
 
     if update_result.modified_count == 0:
-        raise HTTPException(status_code=500, detail="Không thể cập nhật mật khẩu")
+        raise HTTPException(
+            status_code=500,
+            detail="Không thể cập nhật mật khẩu"
+        )
 
-    # 5. Xóa OTP sau khi sử dụng
-    await db.password_reset.delete_one({"email": email})
+    # 5. Xóa OTP sau khi dùng thành công
+    await db.otp_codes.delete_one({"email": email})
 
     return {"message": "Đổi mật khẩu thành công"}
