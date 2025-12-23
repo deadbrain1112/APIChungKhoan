@@ -192,11 +192,12 @@ class ResetPasswordOTP(BaseModel):
     newPassword: str
 
 class NapTienRequest(BaseModel):
-    taikhoan: str
+    maNDT: str   # ObjectId dạng string
     soTien: int
 
+
 class RutTienRequest(BaseModel):
-    taikhoan: str
+    maNDT: str   # ObjectId dạng string
     soTien: int
     nganHang: str
     stk: str
