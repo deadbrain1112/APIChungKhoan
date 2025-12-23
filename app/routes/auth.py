@@ -84,7 +84,6 @@ async def reset_password_otp(data: ResetPasswordOTP):
     # 3. Kiểm tra hết hạn OTP
     expired_at = otp_doc.get("expired_at")
 
-    # 👉 FIX TIMEZONE — nếu datetime từ MongoDB là naive thì convert sang UTC
     if expired_at.tzinfo is None:
         expired_at = expired_at.replace(tzinfo=timezone.utc)
 

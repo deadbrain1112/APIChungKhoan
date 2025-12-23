@@ -190,3 +190,13 @@ class ResetPasswordOTP(BaseModel):
     email: str
     otp: str
     newPassword: str
+
+class NapTienRequest(BaseModel):
+    taikhoan: str
+    soTien: int
+
+class RutTienRequest(BaseModel):
+    taikhoan: str
+    soTien: int
+    nganHang: str
+    stk: str
