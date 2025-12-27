@@ -72,7 +72,7 @@ async def rut_tien(req: RutTienRequest):
     await db.giao_dich.insert_one({
         "maNDT": req.maNDT,
         "kieu": "rut",
-        "soTien": req.soTien,
+        "soTien": -req.soTien,
         "soTienTruoc": so_du_truoc,
         "soTienSau": so_du_sau,
         "trangThai": "Hoàn tất",
