@@ -39,7 +39,7 @@ async def nap_tien(req: NapTienRequest):
         "soTienTruoc": so_du_truoc,
         "soTienSau": so_du_sau,
         "trangThai": "Hoàn tất",
-        "ngayGD": datetime.utcnow(),
+        "ngayGD": datetime.now(),
         "moTa": f"Nạp {req.soTien}"
     })
 
@@ -76,7 +76,7 @@ async def rut_tien(req: RutTienRequest):
         "soTienTruoc": so_du_truoc,
         "soTienSau": so_du_sau,
         "trangThai": "Hoàn tất",
-        "ngayGD": datetime.utcnow(),
+        "ngayGD": datetime.now(),
         "moTa": f"Rút {req.soTien} về {req.nganHang} - {req.stk}"
     })
 
