@@ -21,6 +21,7 @@ async def place_buy_order(order: OrderModel):
 
     result = await db.lenh_dat.insert_one(order.dict())
     saved_order = await db.lenh_dat.find_one({"_id": result.inserted_id})
+    await xu_ly_lenh_moi(saved_order)
     return to_string_id(saved_order)
 
 # ========== 2️⃣ Đặt lệnh BÁN ==========
@@ -37,6 +38,7 @@ async def place_sell_order(order: OrderModel):
 
     result = await db.lenh_dat.insert_one(order.dict())
     saved_order = await db.lenh_dat.find_one({"_id": result.inserted_id})
+    await xu_ly_lenh_moi(saved_order)
     return to_string_id(saved_order)
 
 # ========== 3️⃣ Lấy danh sách lệnh của 1 nhà đầu tư ==========
@@ -117,3 +119,108 @@ async def get_owned_stocks(maNDT: str):
         result.append(doc)
 
     return result
+
+
+async def khop_lenh(mua: dict, ban: dict):
+
+
+    if mua["gia"] < ban["gia"]:
+        return
+
+    so_luong_khop = min(mua["soLuong"], ban["soLuong"])
+    mua["soLuong"] -= so_luong_khop
+    ban["soLuong"] -= so_luong_khop
+    gia_khop = ban["gia"]  # hoặc giá của lệnh vào trước
+
+    so_tien = so_luong_khop * gia_khop
+
+    ndt_mua = await db.nha_dau_tu.find_one({"_id": ObjectId(mua["maNDT"])})
+    ndt_ban = await db.nha_dau_tu.find_one({"_id": ObjectId(ban["maNDT"])})
+
+    if ndt_mua["cash"] < so_tien:
+        raise HTTPException(400, "NĐT mua không đủ tiền")
+
+    await db.nha_dau_tu.update_one(
+        {"_id": ndt_mua["_id"]},
+        {"$inc": {"cash": -so_tien}}
+    )
+
+    await db.nha_dau_tu.update_one(
+        {"_id": ndt_ban["_id"]},
+        {"$inc": {"cash": so_tien}}
+    )
+
+    # ===== 3️⃣ TRỪ SỐ LƯỢNG + TRẠNG THÁI =====
+    async def cap_nhat_lenh(lenh, so_khop):
+        so_moi = lenh["soLuong"] - so_khop
+        trang_thai = "Hoàn tất" if so_moi == 0 else "Khớp 1 phần"
+
+        await db.lenh_dat.update_one(
+            {"_id": lenh["_id"]},
+            {
+                "$inc": {"soLuong": -so_khop},
+                "$set": {"trangThai": trang_thai}
+            }
+        )
+
+    await cap_nhat_lenh(mua, so_luong_khop)
+    await cap_nhat_lenh(ban, so_luong_khop)
+
+    # ===== 4️⃣ CẬP NHẬT SỞ HỮU =====
+    # người mua +
+    await db.so_huu.update_one(
+        {"maNDT": mua["maNDT"], "maCP": mua["maCP"]},
+        {"$inc": {"soLuong": so_luong_khop}},
+        upsert=True
+    )
+
+    await db.so_huu.update_one(
+        {"maNDT": ban["maNDT"], "maCP": ban["maCP"]},
+        {"$inc": {"soLuong": -so_luong_khop}}
+    )
+
+    async def ghi_giao_dich(lenh, loai):
+        ndt = await db.nha_dau_tu.find_one({"_id": ObjectId(lenh["maNDT"])})
+        so_tien_truoc = ndt["cash"] + (so_tien if loai == "M" else -so_tien)
+        so_tien_sau = ndt["cash"]
+
+        await db.giao_dich.insert_one({
+            "maNDT": lenh["maNDT"],
+            "kieu": "cp",
+            "maCP": lenh["maCP"],
+            "gia": gia_khop,
+            "soLuong": so_luong_khop,
+            "soTien": so_tien,
+            "soTienTruoc": so_tien_truoc,
+            "soTienSau": so_tien_sau,
+            "trangThai": "Hoàn tất",
+            "ngayGD": datetime.utcnow(),
+            "moTa": f"Khớp {'mua' if loai=='M' else 'bán'} {lenh['maCP']} SL {so_luong_khop} @ {gia_khop}"
+        })
+
+    await ghi_giao_dich(mua, "M")
+    await ghi_giao_dich(ban, "B")
+
+async def xu_ly_lenh_moi(lenh_moi):
+    if lenh_moi["loaiGD"] == "M":
+        ds_ban = db.lenh_dat.find({
+            "maCP": lenh_moi["maCP"],
+            "loaiGD": "B",
+            "trangThai": {"$in": ["Chờ khớp", "Khớp 1 phần"]},
+            "gia": {"$lte": lenh_moi["gia"]}
+        }).sort([("gia", 1), ("ngayGD", 1)])
+    else:
+        ds_ban = db.lenh_dat.find({
+            "maCP": lenh_moi["maCP"],
+            "loaiGD": "M",
+            "trangThai": {"$in": ["Chờ khớp", "Khớp 1 phần"]},
+            "gia": {"$gte": lenh_moi["gia"]}
+        }).sort([("gia", -1), ("ngayGD", 1)])
+
+    async for lenh_doi_ung in ds_ban:
+        if lenh_doi_ung["trangThai"] == "Hoàn tất":
+            continue
+        await khop_lenh(
+            lenh_moi if lenh_moi["loaiGD"] == "M" else lenh_doi_ung,
+            lenh_doi_ung if lenh_moi["loaiGD"] == "M" else lenh_moi
+        )
