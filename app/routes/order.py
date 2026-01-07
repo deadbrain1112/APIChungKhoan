@@ -82,15 +82,13 @@ async def cancel_order(order_id: str):
 async def get_stock_info(maCP: str):
     maCP = maCP.upper()
 
-    # --- Lấy thông tin cổ phiếu ---
     cp = await db.co_phieu.find_one({"maCP": maCP})
     if not cp:
         raise HTTPException(status_code=404, detail="Không tìm thấy mã cổ phiếu")
 
-    # --- Lấy lịch sử giá mới nhất ---
     latest = await db.lich_su_gia.find_one(
         {"maCP": maCP},
-        sort=[("ngay", -1)]   # Sắp xếp giảm dần theo ngày
+        sort=[("ngay", -1)]
     )
 
     if not latest:
@@ -108,7 +106,6 @@ async def get_stock_info(maCP: str):
 
     return to_string_id(cp)
 
-# ========== 6️⃣ Danh sách cổ phiếu sở hữu ==========
 @router.get("/owned/{maNDT}", response_model=list[dict])
 async def get_owned_stocks(maNDT: str):
     cursor = db["so_huu"].find({"maNDT": maNDT})
@@ -150,7 +147,6 @@ async def khop_lenh(mua: dict, ban: dict):
         {"$inc": {"cash": so_tien}}
     )
 
-    # ===== 3️⃣ TRỪ SỐ LƯỢNG + TRẠNG THÁI =====
     async def cap_nhat_lenh(lenh, so_khop):
         so_moi = lenh["soLuong"] - so_khop
         trang_thai = "Hoàn tất" if so_moi == 0 else "Khớp 1 phần"
@@ -166,8 +162,6 @@ async def khop_lenh(mua: dict, ban: dict):
     await cap_nhat_lenh(mua, so_luong_khop)
     await cap_nhat_lenh(ban, so_luong_khop)
 
-    # ===== 4️⃣ CẬP NHẬT SỞ HỮU =====
-    # người mua +
     await db.so_huu.update_one(
         {"maNDT": mua["maNDT"], "maCP": mua["maCP"]},
         {"$inc": {"soLuong": so_luong_khop}},
